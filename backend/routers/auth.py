@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from auth import (
     verify_password, create_session_token, get_current_user, COOKIE_NAME,
 )
+from config import SESSION_MAX_AGE
 from audit import log_action
 from database import get_db
 import models
@@ -45,7 +46,7 @@ def login(body: LoginRequest, request: Request, response: Response, db: Session 
         httponly=True,
         samesite="lax",
         secure=True,
-        max_age=86400,
+        max_age=SESSION_MAX_AGE,
     )
     log_action(db, user_id=user.id, username=user.username,
                action="login", ip=request.client.host if request.client else None)
@@ -53,8 +54,15 @@ def login(body: LoginRequest, request: Request, response: Response, db: Session 
 
 
 @router.post("/logout")
-def logout(response: Response, current_user: models.User = Depends(get_current_user)):
-    response.delete_cookie(key=COOKIE_NAME)
+def logout(
+    request: Request,
+    response: Response,
+    db: Session = Depends(_get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    response.delete_cookie(key=COOKIE_NAME, httponly=True, samesite="lax", secure=True, path="/")
+    log_action(db, user_id=current_user.id, username=current_user.username,
+               action="logout", ip=request.client.host if request.client else None)
     return {"ok": True}
 
 

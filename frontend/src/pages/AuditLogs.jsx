@@ -3,6 +3,7 @@ import { api } from "../api";
 
 const ACTION_COLOR = {
   login: "badge-green",
+  logout: "badge-amber",
   view_dashboard: "badge-blue",
   view_orders: "badge-blue",
   view_users: "badge-blue",
