@@ -1,6 +1,9 @@
+import logging
 from typing import Optional
 from sqlalchemy.orm import Session
 from models import HubAuditLog
+
+logger = logging.getLogger(__name__)
 
 
 def log_action(
@@ -26,4 +29,4 @@ def log_action(
         db.add(entry)
         db.commit()
     except Exception as exc:
-        print(f"[audit] failed to log: {exc}")
+        logger.warning("[audit] failed to log: %s", exc)

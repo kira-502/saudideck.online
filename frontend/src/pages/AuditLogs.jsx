@@ -7,6 +7,9 @@ const ACTION_COLOR = {
   view_dashboard: "badge-blue",
   view_orders: "badge-blue",
   view_users: "badge-blue",
+  view_subscriptions: "badge-blue",
+  view_emails: "badge-blue",
+  download_extraction: "badge-green",
 };
 
 export default function AuditLogs() {
