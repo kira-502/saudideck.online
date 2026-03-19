@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from config import ALLOWED_ORIGINS
 from routers import auth as auth_router
+from routers import dashboard as dashboard_router
 
 app = FastAPI(title="SaudiDeck Hub", version="1.0.0")
 
@@ -17,6 +18,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router.router)
+app.include_router(dashboard_router.router)
 
 
 @app.get("/health")
