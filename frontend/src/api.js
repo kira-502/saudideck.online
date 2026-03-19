@@ -25,4 +25,5 @@ export const api = {
   users: () => req("GET", "/users"),
   auditLogs: (page = 1) => req("GET", `/audit-logs?page=${page}`),
   subscriptions: () => req("GET", "/subscriptions"),
+  emailExtractions: () => req("GET", "/emails"),
 };

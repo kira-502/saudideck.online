@@ -88,6 +88,17 @@ class ImportLog(Base):
     imported_at = Column(DateTime(timezone=True), default=_now)
 
 
+class EmailExtraction(Base):
+    __tablename__ = "email_extractions"
+    __table_args__ = {"extend_existing": True}
+
+    id = Column(Integer, primary_key=True)
+    run_at = Column(DateTime(timezone=True), nullable=True)
+    triggered_by = Column(String(200), nullable=True)
+    email_count = Column(Integer, nullable=True)
+    raw_data = Column(JSON, nullable=True)
+
+
 # ── New table: hub audit log ─────────────────────────────────────────────────
 
 class HubAuditLog(Base):
