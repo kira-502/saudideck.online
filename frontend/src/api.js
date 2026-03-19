@@ -24,4 +24,5 @@ export const api = {
   orders: (type, page = 1) => req("GET", `/orders/${type}?page=${page}`),
   users: () => req("GET", "/users"),
   auditLogs: (page = 1) => req("GET", `/audit-logs?page=${page}`),
+  subscriptions: () => req("GET", "/subscriptions"),
 };

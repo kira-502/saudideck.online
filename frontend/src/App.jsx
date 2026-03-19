@@ -6,6 +6,7 @@ import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
 import Users from "./pages/Users";
 import AuditLogs from "./pages/AuditLogs";
+import Subscriptions from "./pages/Subscriptions";
 
 function RequireAuth({ children }) {
   const { user } = useAuth();
@@ -38,6 +39,7 @@ export default function App() {
                   <Route path="/orders" element={<Orders />} />
                   <Route path="/users" element={<Users />} />
                   <Route path="/audit-logs" element={<AuditLogs />} />
+                  <Route path="/subscriptions" element={<Subscriptions />} />
                 </Routes>
               </AppLayout>
             </RequireAuth>
