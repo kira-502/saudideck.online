@@ -333,7 +333,7 @@ export default function GameRequests() {
 
   // Load counts for badge display
   const loadCounts = () => {
-    const statuses = ["pending", "has_deal", "added", "no_deal"];
+    const statuses = ["pending", "top", "done", "deleted"];
     Promise.all(
       statuses.map((s) =>
         api.gameRequests({ status: s, page: 1 }).then((d) => [s, d.total])
@@ -415,7 +415,7 @@ export default function GameRequests() {
       .catch((e) => setError(e.message));
   };
 
-  const totalAll = Object.values(counts).reduce((a, b) => a + b, 0);
+  const totalAll = (counts.pending || 0) + (counts.top || 0);
 
   return (
     <>
