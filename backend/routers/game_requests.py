@@ -83,6 +83,7 @@ def _serialize(r: models.GameRequest) -> dict:
         "steam_price_uah": r.steam_price_uah,
         "steam_price_sar": r.steam_price_sar,
         "steam_discount": r.steam_discount,
+        "deleted_at": r.deleted_at.isoformat() if r.deleted_at else None,
     }
 
 
@@ -127,11 +128,14 @@ def list_game_requests(
     current_user: models.User = Depends(get_current_user),
 ):
     q = db.query(models.GameRequest)
-    if status:
-        q = q.filter(models.GameRequest.status == status)
+    if status == "deleted":
+        q = q.filter(models.GameRequest.deleted_at.isnot(None))
     else:
-        # "All" tab excludes done items
-        q = q.filter(models.GameRequest.status != "done")
+        q = q.filter(models.GameRequest.deleted_at.is_(None))
+        if status:
+            q = q.filter(models.GameRequest.status == status)
+        else:
+            q = q.filter(models.GameRequest.status != "done")
     total = q.count()
     # Top items first, then by date desc
     priority = case({"top": 0}, value=models.GameRequest.status, else_=1)
@@ -293,7 +297,8 @@ def delete_game_request(
     if not gr:
         raise HTTPException(status_code=404, detail="Game request not found")
 
-    db.delete(gr)
+    from datetime import datetime, timezone
+    gr.deleted_at = datetime.now(timezone.utc)
     db.commit()
 
     log_action(
@@ -307,6 +312,33 @@ def delete_game_request(
     )
 
     return {"ok": True}
+
+
+@router.post("/{request_id}/restore")
+def restore_game_request(
+    request_id: int,
+    request: Request,
+    db: Session = Depends(_get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    gr = db.query(models.GameRequest).filter(models.GameRequest.id == request_id).first()
+    if not gr:
+        raise HTTPException(status_code=404, detail="Game request not found")
+
+    gr.deleted_at = None
+    db.commit()
+
+    log_action(
+        db,
+        user_id=current_user.id,
+        username=current_user.username,
+        action="game_request_restored",
+        resource="game_requests",
+        detail=f"id={request_id} game_name={gr.game_name}",
+        ip=request.client.host if request.client else None,
+    )
+
+    return _serialize(gr)
 
 
 @router.post("/refresh-prices")

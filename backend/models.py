@@ -115,6 +115,7 @@ class GameRequest(Base):
     steam_price_uah = Column(Float, nullable=True)
     steam_price_sar = Column(Float, nullable=True)
     steam_discount = Column(Integer, nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
 
 # ── New table: hub audit log ─────────────────────────────────────────────────

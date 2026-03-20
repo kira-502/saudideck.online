@@ -18,6 +18,7 @@ const TABS = [
   { key: "top", label: "Top" },
   { key: "pending", label: "Pending" },
   { key: "done", label: "Done" },
+  { key: "deleted", label: "Deleted" },
 ];
 
 function SteamCell({ row, onLinked }) {
@@ -395,18 +396,20 @@ export default function GameRequests() {
   };
 
   const handleDelete = (id) => {
-    if (!window.confirm("Delete this request?")) return;
     api
       .deleteGameRequest(id)
       .then(() => {
-        setData((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            total: prev.total - 1,
-            items: prev.items.filter((r) => r.id !== id),
-          };
-        });
+        setData((prev) => prev ? { ...prev, total: prev.total - 1, items: prev.items.filter((r) => r.id !== id) } : prev);
+        loadCounts();
+      })
+      .catch((e) => setError(e.message));
+  };
+
+  const handleRestore = (id) => {
+    api
+      .restoreGameRequest(id)
+      .then(() => {
+        setData((prev) => prev ? { ...prev, total: prev.total - 1, items: prev.items.filter((r) => r.id !== id) } : prev);
         loadCounts();
       })
       .catch((e) => setError(e.message));
@@ -434,7 +437,7 @@ export default function GameRequests() {
         </h1>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {priceMsg && <span style={{ fontSize: 12, color: "var(--green)" }}>{priceMsg}</span>}
-          <button
+          {activeTab !== "deleted" && <button
             className="btn"
             disabled={refreshingPrices}
             onClick={() => {
@@ -450,7 +453,7 @@ export default function GameRequests() {
             }}
           >
             {refreshingPrices ? "Updating…" : "↻ Update Prices"}
-          </button>
+          </button>}
           <button className="btn" onClick={() => { load(); loadCounts(); }} disabled={loading}>
             {loading ? "…" : "↻ Refresh"}
           </button>
@@ -612,24 +615,26 @@ export default function GameRequests() {
                           )}
                         </td>
                         <td>
-                          <StatusDropdown row={r} onUpdate={updateStatus} />
+                          {activeTab !== "deleted" && <StatusDropdown row={r} onUpdate={updateStatus} />}
                         </td>
                         <td>
-                          <button
-                            onClick={() => handleDelete(r.id)}
-                            title="Delete request"
-                            style={{
-                              padding: "3px 7px",
-                              fontSize: 13,
-                              borderRadius: 4,
-                              border: "1px solid var(--border)",
-                              background: "rgba(255,82,82,0.1)",
-                              color: "var(--red)",
-                              cursor: "pointer",
-                            }}
-                          >
-                            🗑
-                          </button>
+                          {activeTab === "deleted" ? (
+                            <button
+                              onClick={() => handleRestore(r.id)}
+                              title="Restore request"
+                              style={{ padding: "3px 8px", fontSize: 12, borderRadius: 4, border: "1px solid var(--green)", background: "rgba(78,205,196,0.1)", color: "var(--green)", cursor: "pointer" }}
+                            >
+                              ↩ Restore
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleDelete(r.id)}
+                              title="Delete request"
+                              style={{ padding: "3px 7px", fontSize: 13, borderRadius: 4, border: "1px solid var(--border)", background: "rgba(255,82,82,0.1)", color: "var(--red)", cursor: "pointer" }}
+                            >
+                              🗑
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
