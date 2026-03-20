@@ -15,7 +15,7 @@ SUBS_AUTH = (os.environ.get("SUBS_API_USER", "admin"), os.environ.get("SUBS_API_
 WA_TOKEN = os.environ.get("WA_TOKEN", "")
 WA_PHONE_ID = os.environ.get("WA_PHONE_ID", "")
 TEMPLATE_NAME = "eid_campaign_active"
-TEMPLATE_LANG = "ar"
+TEMPLATE_LANG = "en"
 
 
 def _get_db():

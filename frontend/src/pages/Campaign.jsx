@@ -34,7 +34,7 @@ export default function Campaign() {
     try {
       await api.campaignSend({
         phone: "966503505084",
-        name: "محمد",
+        name: "Mohammed",
         expiry_date: "01/05/2026",
       });
       setTestStatus("✓ Sent successfully");
