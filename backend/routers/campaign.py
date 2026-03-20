@@ -28,6 +28,20 @@ class SendBody(BaseModel):
     expiry_date: str
 
 
+@router.get("/debug-templates")
+async def debug_templates(
+    current_user: models.User = Depends(get_current_user),
+):
+    waba_id = "765380093093659"
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        resp = await client.get(
+            f"https://graph.facebook.com/v22.0/{waba_id}/message_templates",
+            headers={"Authorization": f"Bearer {WA_TOKEN}"},
+            params={"fields": "name,status,language", "limit": 20},
+        )
+        return resp.json()
+
+
 @router.get("/subscribers")
 async def get_subscribers(
     current_user: models.User = Depends(get_current_user),
