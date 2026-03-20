@@ -160,13 +160,12 @@ async def steam_search(
     if not items:
         return []
 
-    # 2. Fetch exchange rate UAH → SAR
+    # 2. Fetch exchange rate UAH → SAR (open.er-api.com supports UAH)
     sar_rate: Optional[float] = None
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             fx_resp = await client.get(
-                "https://api.frankfurter.app/latest",
-                params={"from": "UAH", "to": "SAR"},
+                "https://open.er-api.com/v6/latest/UAH",
             )
             fx_resp.raise_for_status()
             fx_data = fx_resp.json()
