@@ -25,6 +25,25 @@ export default function Campaign() {
   const [sentMap, setSentMap] = useState({});
   const [sendingMap, setSendingMap] = useState({});
   const [sendingAll, setSendingAll] = useState(false);
+  const [testStatus, setTestStatus] = useState("");
+  const [testSending, setTestSending] = useState(false);
+
+  const sendTest = async () => {
+    setTestSending(true);
+    setTestStatus("");
+    try {
+      await api.campaignSend({
+        phone: "966503505084",
+        name: "محمد",
+        expiry_date: "01/05/2026",
+      });
+      setTestStatus("✓ Sent successfully");
+    } catch (e) {
+      setTestStatus("✗ " + e.message);
+    } finally {
+      setTestSending(false);
+    }
+  };
 
   const load = () => {
     setLoading(true);
@@ -97,6 +116,24 @@ export default function Campaign() {
             {loading ? "Loading…" : subs ? "↻ Refresh" : "Load Subscribers"}
           </button>
         </div>
+      </div>
+
+      {/* Test send */}
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ fontSize: 13, color: "var(--muted)" }}>Test send to +966503505084:</span>
+        <button
+          className="btn"
+          onClick={sendTest}
+          disabled={testSending}
+          style={{ padding: "4px 14px", fontSize: 13 }}
+        >
+          {testSending ? "Sending…" : "Send Test"}
+        </button>
+        {testStatus && (
+          <span style={{ fontSize: 13, color: testStatus.startsWith("✓") ? "var(--green)" : "var(--red)" }}>
+            {testStatus}
+          </span>
+        )}
       </div>
 
       {error && <div style={{ color: "var(--red)", marginBottom: 16 }}>{error}</div>}
