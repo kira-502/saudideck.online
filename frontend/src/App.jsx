@@ -8,6 +8,7 @@ import Users from "./pages/Users";
 import AuditLogs from "./pages/AuditLogs";
 import Subscriptions from "./pages/Subscriptions";
 import Emails from "./pages/Emails";
+import GamesLibrary from "./pages/GamesLibrary";
 
 function RequireAuth({ children }) {
   const { user } = useAuth();
@@ -42,6 +43,7 @@ export default function App() {
                   <Route path="/audit-logs" element={<AuditLogs />} />
                   <Route path="/subscriptions" element={<Subscriptions />} />
                   <Route path="/emails" element={<Emails />} />
+                  <Route path="/games-library" element={<GamesLibrary />} />
                 </Routes>
               </AppLayout>
             </RequireAuth>

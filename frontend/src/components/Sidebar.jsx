@@ -8,6 +8,7 @@ const NAV = [
   { to: "/emails", label: "Emails", icon: "✉️" },
   { to: "/users", label: "Users", icon: "👤" },
   { to: "/audit-logs", label: "Audit Logs", icon: "📋" },
+  { to: "/games-library", label: "Games Library", icon: "🎮" },
 ];
 
 export default function Sidebar() {
