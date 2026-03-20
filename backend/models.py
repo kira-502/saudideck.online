@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from sqlalchemy import (
-    BigInteger, Boolean, Column, ForeignKey, Integer,
+    BigInteger, Boolean, Column, Float, ForeignKey, Integer,
     Numeric, String, Text, DateTime, UniqueConstraint, JSON
 )
 from database import Base
@@ -109,6 +109,11 @@ class GameRequest(Base):
     order_number = Column(String(50), nullable=True)
     status = Column(String(20), nullable=False, default="pending")  # pending, has_deal, added, no_deal
     notes = Column(Text, nullable=True)
+    steam_app_id = Column(String(20), nullable=True)
+    steam_name = Column(String(200), nullable=True)
+    steam_url = Column(String(300), nullable=True)
+    steam_price_uah = Column(Float, nullable=True)
+    steam_price_sar = Column(Float, nullable=True)
 
 
 # ── New table: hub audit log ─────────────────────────────────────────────────

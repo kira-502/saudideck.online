@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 
 const STATUS_LABELS = {
@@ -22,6 +22,169 @@ const TABS = [
   { key: "added", label: "Added" },
   { key: "no_deal", label: "No Deal" },
 ];
+
+function SteamCell({ row, onLinked }) {
+  const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState(null);
+  const [searchError, setSearchError] = useState("");
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
+        setOpen(false);
+        setResults(null);
+        setSearchError("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  if (row.steam_app_id) {
+    return (
+      <div style={{ fontSize: 12 }}>
+        <a
+          href={row.steam_url}
+          target="_blank"
+          rel="noreferrer"
+          style={{ color: "var(--accent)", textDecoration: "none" }}
+        >
+          {row.steam_name || row.steam_app_id}
+        </a>
+        {row.steam_price_sar != null && (
+          <div style={{ color: "var(--muted)", marginTop: 2 }}>
+            {row.steam_price_sar === 0
+              ? "مجاني"
+              : row.steam_price_sar.toFixed(2) + " ر.س"}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  const handleSearch = () => {
+    setSearching(true);
+    setSearchError("");
+    setResults(null);
+    api
+      .steamSearch(row.game_name)
+      .then((data) => {
+        setResults(data);
+        setOpen(true);
+      })
+      .catch((e) => setSearchError(e.message))
+      .finally(() => setSearching(false));
+  };
+
+  const handleSelect = (result) => {
+    api
+      .linkSteam(row.id, {
+        app_id: result.app_id,
+        name: result.name,
+        url: result.url,
+        price_uah: result.price_uah,
+        price_sar: result.price_sar,
+      })
+      .then((updated) => {
+        setOpen(false);
+        setResults(null);
+        onLinked(updated);
+      })
+      .catch((e) => setSearchError(e.message));
+  };
+
+  return (
+    <div ref={wrapRef} style={{ position: "relative" }}>
+      <button
+        onClick={handleSearch}
+        disabled={searching}
+        style={{
+          padding: "3px 8px",
+          fontSize: 11,
+          borderRadius: 4,
+          border: "1px solid #7c3aed",
+          background: "rgba(124,58,237,0.12)",
+          color: "#a78bfa",
+          cursor: searching ? "default" : "pointer",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {searching ? "…" : "Search Steam"}
+      </button>
+      {searchError && (
+        <div style={{ color: "var(--red)", fontSize: 11, marginTop: 4 }}>
+          {searchError}
+        </div>
+      )}
+      {open && results && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            zIndex: 100,
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: 6,
+            minWidth: 240,
+            maxWidth: 320,
+            boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+            marginTop: 4,
+          }}
+        >
+          {results.length === 0 ? (
+            <div
+              style={{ padding: "8px 12px", fontSize: 12, color: "var(--muted)" }}
+            >
+              No results found
+            </div>
+          ) : (
+            results.map((r) => {
+              const priceLabel = r.is_free
+                ? "مجاني"
+                : r.not_available
+                ? "غير متاح"
+                : r.price_sar != null
+                ? r.price_sar.toFixed(2) + " ر.س"
+                : "—";
+              return (
+                <div
+                  key={r.app_id}
+                  onClick={() => handleSelect(r)}
+                  style={{
+                    padding: "8px 12px",
+                    cursor: "pointer",
+                    fontSize: 12,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 8,
+                    borderBottom: "1px solid var(--border)",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background = "rgba(100,149,237,0.1)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background = "transparent")
+                  }
+                >
+                  <span style={{ color: "var(--text)" }}>{r.name}</span>
+                  <span style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>
+                    {priceLabel}
+                  </span>
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function GameRequests() {
   const [data, setData] = useState(null);
@@ -94,6 +257,34 @@ export default function GameRequests() {
           return next;
         });
         load(activeTab, page);
+      })
+      .catch((e) => setError(e.message));
+  };
+
+  const handleSteamLinked = (updated) => {
+    setData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.map((r) => (r.id === updated.id ? updated : r)),
+      };
+    });
+  };
+
+  const handleDelete = (id) => {
+    if (!window.confirm("Delete this request?")) return;
+    api
+      .deleteGameRequest(id)
+      .then(() => {
+        setData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            total: prev.total - 1,
+            items: prev.items.filter((r) => r.id !== id),
+          };
+        });
+        loadCounts();
       })
       .catch((e) => setError(e.message));
   };
@@ -191,8 +382,10 @@ export default function GameRequests() {
                     <th>Game Name</th>
                     <th>Order #</th>
                     <th>Status</th>
+                    <th>Steam</th>
                     <th>Notes</th>
                     <th>Actions</th>
+                    <th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -221,6 +414,9 @@ export default function GameRequests() {
                           >
                             {STATUS_LABELS[r.status] || r.status}
                           </span>
+                        </td>
+                        <td style={{ minWidth: 130 }}>
+                          <SteamCell row={r} onLinked={handleSteamLinked} />
                         </td>
                         <td style={{ minWidth: 160 }}>
                           {isEditingNote ? (
@@ -300,6 +496,23 @@ export default function GameRequests() {
                               </button>
                             ))}
                           </div>
+                        </td>
+                        <td>
+                          <button
+                            onClick={() => handleDelete(r.id)}
+                            title="Delete request"
+                            style={{
+                              padding: "3px 7px",
+                              fontSize: 13,
+                              borderRadius: 4,
+                              border: "1px solid var(--border)",
+                              background: "rgba(255,82,82,0.1)",
+                              color: "var(--red)",
+                              cursor: "pointer",
+                            }}
+                          >
+                            🗑
+                          </button>
                         </td>
                       </tr>
                     );

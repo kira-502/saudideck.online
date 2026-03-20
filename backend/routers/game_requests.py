@@ -1,4 +1,6 @@
 from typing import Optional
+import asyncio
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
@@ -55,6 +57,32 @@ class GameRequestUpdate(BaseModel):
         return v
 
 
+class SteamLinkBody(BaseModel):
+    app_id: str
+    name: str
+    url: str
+    price_uah: Optional[float] = None
+    price_sar: Optional[float] = None
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _serialize(r: models.GameRequest) -> dict:
+    return {
+        "id": r.id,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+        "game_name": r.game_name,
+        "order_number": r.order_number,
+        "status": r.status,
+        "notes": r.notes,
+        "steam_app_id": r.steam_app_id,
+        "steam_name": r.steam_name,
+        "steam_url": r.steam_url,
+        "steam_price_uah": r.steam_price_uah,
+        "steam_price_sar": r.steam_price_sar,
+    }
+
+
 # ── Public endpoint (no auth) ─────────────────────────────────────────────────
 
 @router.post("", include_in_schema=True)
@@ -109,18 +137,165 @@ def list_game_requests(
         "total": total,
         "page": page,
         "pages": max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE),
-        "items": [
-            {
-                "id": r.id,
-                "created_at": r.created_at.isoformat() if r.created_at else None,
-                "game_name": r.game_name,
-                "order_number": r.order_number,
-                "status": r.status,
-                "notes": r.notes,
-            }
-            for r in items
-        ],
+        "items": [_serialize(r) for r in items],
     }
+
+
+@router.get("/steam-search")
+async def steam_search(
+    q: str,
+    current_user: models.User = Depends(get_current_user),
+):
+    """Search Steam Ukraine store and return up to 5 results with UAH + SAR prices."""
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        # 1. Search Steam store
+        search_resp = await client.get(
+            "https://store.steampowered.com/api/storesearch/",
+            params={"term": q, "l": "english", "cc": "UA"},
+        )
+        search_resp.raise_for_status()
+        search_data = search_resp.json()
+
+    items = (search_data.get("items") or [])[:5]
+    if not items:
+        return []
+
+    # 2. Fetch exchange rate UAH → SAR
+    sar_rate: Optional[float] = None
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            fx_resp = await client.get(
+                "https://api.frankfurter.app/latest",
+                params={"from": "UAH", "to": "SAR"},
+            )
+            fx_resp.raise_for_status()
+            fx_data = fx_resp.json()
+            sar_rate = fx_data.get("rates", {}).get("SAR")
+    except Exception:
+        sar_rate = None
+
+    # 3. Fetch app details concurrently
+    app_ids = [str(item["id"]) for item in items]
+
+    async def fetch_details(app_id: str):
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(
+                    "https://store.steampowered.com/api/appdetails",
+                    params={"appids": app_id, "cc": "UA", "l": "english"},
+                )
+                resp.raise_for_status()
+                return app_id, resp.json()
+        except Exception:
+            return app_id, None
+
+    detail_results = await asyncio.gather(*[fetch_details(aid) for aid in app_ids])
+    details_map = {aid: data for aid, data in detail_results}
+
+    # 4. Build response
+    results = []
+    for item in items:
+        app_id = str(item["id"])
+        name = item.get("name", "")
+        url = f"https://store.steampowered.com/app/{app_id}"
+
+        detail_data = details_map.get(app_id)
+        is_free = False
+        not_available = False
+        price_uah: Optional[float] = None
+        price_sar: Optional[float] = None
+
+        if detail_data and detail_data.get(app_id, {}).get("success"):
+            app_info = detail_data[app_id]["data"]
+            if app_info.get("is_free"):
+                is_free = True
+                price_uah = 0.0
+                price_sar = 0.0
+            else:
+                price_overview = app_info.get("price_overview")
+                if price_overview:
+                    # Steam returns price in minor units (kopecks), divide by 100
+                    raw = price_overview.get("final", 0)
+                    price_uah = round(raw / 100, 2)
+                    if sar_rate is not None:
+                        price_sar = round(price_uah * sar_rate, 2)
+                else:
+                    not_available = True
+        else:
+            not_available = True
+
+        results.append({
+            "app_id": app_id,
+            "name": name,
+            "url": url,
+            "price_uah": price_uah,
+            "price_sar": price_sar,
+            "is_free": is_free,
+            "not_available": not_available,
+        })
+
+    return results
+
+
+@router.patch("/{request_id}/steam")
+def link_steam(
+    request_id: int,
+    body: SteamLinkBody,
+    request: Request,
+    db: Session = Depends(_get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    gr = db.query(models.GameRequest).filter(models.GameRequest.id == request_id).first()
+    if not gr:
+        raise HTTPException(status_code=404, detail="Game request not found")
+
+    gr.steam_app_id = body.app_id
+    gr.steam_name = body.name
+    gr.steam_url = body.url
+    gr.steam_price_uah = body.price_uah
+    gr.steam_price_sar = body.price_sar
+
+    db.commit()
+    db.refresh(gr)
+
+    log_action(
+        db,
+        user_id=current_user.id,
+        username=current_user.username,
+        action="game_request_steam_linked",
+        resource="game_requests",
+        detail=f"id={request_id} steam_app_id={body.app_id}",
+        ip=request.client.host if request.client else None,
+    )
+
+    return _serialize(gr)
+
+
+@router.delete("/{request_id}")
+def delete_game_request(
+    request_id: int,
+    request: Request,
+    db: Session = Depends(_get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    gr = db.query(models.GameRequest).filter(models.GameRequest.id == request_id).first()
+    if not gr:
+        raise HTTPException(status_code=404, detail="Game request not found")
+
+    db.delete(gr)
+    db.commit()
+
+    log_action(
+        db,
+        user_id=current_user.id,
+        username=current_user.username,
+        action="game_request_deleted",
+        resource="game_requests",
+        detail=f"id={request_id} game_name={gr.game_name}",
+        ip=request.client.host if request.client else None,
+    )
+
+    return {"ok": True}
 
 
 @router.patch("/{request_id}")
@@ -156,11 +331,4 @@ def update_game_request(
         ip=request.client.host if request.client else None,
     )
 
-    return {
-        "id": gr.id,
-        "created_at": gr.created_at.isoformat() if gr.created_at else None,
-        "game_name": gr.game_name,
-        "order_number": gr.order_number,
-        "status": gr.status,
-        "notes": gr.notes,
-    }
+    return _serialize(gr)

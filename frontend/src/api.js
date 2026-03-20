@@ -32,4 +32,7 @@ export const api = {
     return req("GET", `/game-requests${q ? "?" + q : ""}`);
   },
   updateGameRequest: (id, data) => req("PATCH", `/game-requests/${id}`, data),
+  steamSearch: (q) => req("GET", `/game-requests/steam-search?q=${encodeURIComponent(q)}`),
+  linkSteam: (id, data) => req("PATCH", `/game-requests/${id}/steam`, data),
+  deleteGameRequest: (id) => req("DELETE", `/game-requests/${id}`),
 };
