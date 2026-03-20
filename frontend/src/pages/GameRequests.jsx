@@ -45,23 +45,31 @@ function SteamCell({ row, onLinked }) {
   }, [open]);
 
   if (row.steam_app_id) {
+    const priceText =
+      row.steam_price_sar === 0
+        ? "مجاني"
+        : row.steam_price_sar != null
+        ? row.steam_price_sar.toFixed(2) + " ر.س"
+        : "غير متاح";
+    const priceColor =
+      row.steam_price_sar === 0
+        ? "var(--green)"
+        : row.steam_price_sar != null
+        ? "var(--accent)"
+        : "var(--muted)";
     return (
       <div style={{ fontSize: 12 }}>
         <a
           href={row.steam_url}
           target="_blank"
           rel="noreferrer"
-          style={{ color: "var(--accent)", textDecoration: "none" }}
+          style={{ color: "var(--text)", textDecoration: "none" }}
         >
           {row.steam_name || row.steam_app_id}
         </a>
-        {row.steam_price_sar != null && (
-          <div style={{ color: "var(--muted)", marginTop: 2 }}>
-            {row.steam_price_sar === 0
-              ? "مجاني"
-              : row.steam_price_sar.toFixed(2) + " ر.س"}
-          </div>
-        )}
+        <div style={{ color: priceColor, fontWeight: 600, marginTop: 2 }}>
+          {priceText}
+        </div>
       </div>
     );
   }
@@ -180,6 +188,75 @@ function SteamCell({ row, onLinked }) {
               );
             })
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatusDropdown({ row, onUpdate }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          padding: "4px 10px",
+          fontSize: 12,
+          borderRadius: 4,
+          border: `1px solid ${STATUS_STYLE[row.status]?.color || "var(--border)"}`,
+          background: STATUS_STYLE[row.status]?.background || "var(--surface)",
+          color: STATUS_STYLE[row.status]?.color || "var(--text)",
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {STATUS_LABELS[row.status] || row.status} ▾
+      </button>
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            zIndex: 100,
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: 6,
+            minWidth: 120,
+            boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+            marginTop: 4,
+          }}
+        >
+          {Object.entries(STATUS_LABELS).map(([s, label]) => (
+            <div
+              key={s}
+              onClick={() => { onUpdate(row.id, s); setOpen(false); }}
+              style={{
+                padding: "7px 12px",
+                fontSize: 12,
+                cursor: s === row.status ? "default" : "pointer",
+                color: s === row.status ? STATUS_STYLE[s]?.color : "var(--text)",
+                background: s === row.status ? STATUS_STYLE[s]?.background : "transparent",
+                fontWeight: s === row.status ? 600 : 400,
+              }}
+              onMouseEnter={(e) => { if (s !== row.status) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+              onMouseLeave={(e) => { if (s !== row.status) e.currentTarget.style.background = "transparent"; }}
+            >
+              {label}
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -400,7 +477,7 @@ export default function GameRequests() {
                       <tr key={r.id}>
                         <td style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
                           {r.created_at
-                            ? new Date(r.created_at).toLocaleString()
+                            ? new Date(r.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
                             : "—"}
                         </td>
                         <td style={{ fontWeight: 500 }}>{r.game_name}</td>
@@ -469,33 +546,7 @@ export default function GameRequests() {
                           )}
                         </td>
                         <td>
-                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                            {Object.entries(STATUS_LABELS).map(([s, label]) => (
-                              <button
-                                key={s}
-                                disabled={r.status === s}
-                                onClick={() => updateStatus(r.id, s)}
-                                style={{
-                                  padding: "3px 8px",
-                                  fontSize: 11,
-                                  borderRadius: 4,
-                                  border: `1px solid var(--border)`,
-                                  background:
-                                    r.status === s
-                                      ? (STATUS_STYLE[s]?.background || "var(--border)")
-                                      : "var(--surface)",
-                                  color:
-                                    r.status === s
-                                      ? (STATUS_STYLE[s]?.color || "var(--text)")
-                                      : "var(--muted)",
-                                  cursor: r.status === s ? "default" : "pointer",
-                                  opacity: r.status === s ? 1 : 0.8,
-                                }}
-                              >
-                                {label}
-                              </button>
-                            ))}
-                          </div>
+                          <StatusDropdown row={r} onUpdate={updateStatus} />
                         </td>
                         <td>
                           <button
