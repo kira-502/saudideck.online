@@ -28,6 +28,7 @@ function SteamCell({ row, onLinked }) {
   const [results, setResults] = useState(null);
   const [searchError, setSearchError] = useState("");
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const wrapRef = useRef(null);
 
   // Close dropdown when clicking outside
@@ -44,7 +45,7 @@ function SteamCell({ row, onLinked }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  if (row.steam_app_id) {
+  if (row.steam_app_id && !editing) {
     const priceText =
       row.steam_price_sar === 0
         ? "مجاني"
@@ -59,16 +60,28 @@ function SteamCell({ row, onLinked }) {
         : "var(--muted)";
     return (
       <div style={{ fontSize: 12 }}>
-        <a
-          href={row.steam_url}
-          target="_blank"
-          rel="noreferrer"
-          style={{ color: "var(--text)", textDecoration: "none" }}
-        >
-          {row.steam_name || row.steam_app_id}
-        </a>
-        <div style={{ color: priceColor, fontWeight: 600, marginTop: 2 }}>
-          {priceText}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <a
+            href={row.steam_url}
+            target="_blank"
+            rel="noreferrer"
+            style={{ color: "var(--text)", textDecoration: "none" }}
+          >
+            {row.steam_name || row.steam_app_id}
+          </a>
+          <button
+            onClick={() => setEditing(true)}
+            title="Re-search"
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 11, padding: 0 }}
+          >✎</button>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+          <span style={{ color: priceColor, fontWeight: 600 }}>{priceText}</span>
+          {row.steam_discount > 0 && (
+            <span style={{ background: "rgba(78,205,196,0.2)", color: "var(--green)", borderRadius: 3, padding: "1px 5px", fontWeight: 700, fontSize: 11 }}>
+              -{row.steam_discount}%
+            </span>
+          )}
         </div>
       </div>
     );
@@ -96,10 +109,12 @@ function SteamCell({ row, onLinked }) {
         url: result.url,
         price_uah: result.price_uah,
         price_sar: result.price_sar,
+        discount: result.discount_percent || 0,
       })
       .then((updated) => {
         setOpen(false);
         setResults(null);
+        setEditing(false);
         onLinked(updated);
       })
       .catch((e) => setSearchError(e.message));
@@ -181,8 +196,15 @@ function SteamCell({ row, onLinked }) {
                   }
                 >
                   <span style={{ color: "var(--text)" }}>{r.name}</span>
-                  <span style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>
-                    {priceLabel}
+                  <span style={{ display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
+                    {r.discount_percent > 0 && (
+                      <span style={{ background: "rgba(78,205,196,0.2)", color: "var(--green)", borderRadius: 3, padding: "1px 5px", fontWeight: 700, fontSize: 10 }}>
+                        -{r.discount_percent}%
+                      </span>
+                    )}
+                    <span style={{ color: r.discount_percent > 0 ? "var(--green)" : "var(--muted)" }}>
+                      {priceLabel}
+                    </span>
                   </span>
                 </div>
               );

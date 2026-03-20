@@ -63,6 +63,7 @@ class SteamLinkBody(BaseModel):
     url: str
     price_uah: Optional[float] = None
     price_sar: Optional[float] = None
+    discount: Optional[int] = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -80,6 +81,7 @@ def _serialize(r: models.GameRequest) -> dict:
         "steam_url": r.steam_url,
         "steam_price_uah": r.steam_price_uah,
         "steam_price_sar": r.steam_price_sar,
+        "steam_discount": r.steam_discount,
     }
 
 
@@ -203,6 +205,7 @@ async def steam_search(
         not_available = False
         price_uah: Optional[float] = None
         price_sar: Optional[float] = None
+        discount_percent: int = 0
 
         if detail_data and detail_data.get(app_id, {}).get("success"):
             app_info = detail_data[app_id]["data"]
@@ -218,6 +221,7 @@ async def steam_search(
                     price_uah = round(raw / 100, 2)
                     if sar_rate is not None:
                         price_sar = round(price_uah * sar_rate, 2)
+                    discount_percent = price_overview.get("discount_percent", 0)
                 else:
                     not_available = True
         else:
@@ -231,6 +235,7 @@ async def steam_search(
             "price_sar": price_sar,
             "is_free": is_free,
             "not_available": not_available,
+            "discount_percent": discount_percent,
         })
 
     return results
@@ -253,6 +258,7 @@ def link_steam(
     gr.steam_url = body.url
     gr.steam_price_uah = body.price_uah
     gr.steam_price_sar = body.price_sar
+    gr.steam_discount = body.discount
 
     db.commit()
     db.refresh(gr)

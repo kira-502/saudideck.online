@@ -114,6 +114,7 @@ class GameRequest(Base):
     steam_url = Column(String(300), nullable=True)
     steam_price_uah = Column(Float, nullable=True)
     steam_price_sar = Column(Float, nullable=True)
+    steam_discount = Column(Integer, nullable=True)
 
 
 # ── New table: hub audit log ─────────────────────────────────────────────────
