@@ -3,6 +3,7 @@ import asyncio
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
+from sqlalchemy import case
 from sqlalchemy.orm import Session
 from auth import get_current_user
 from audit import log_action
@@ -11,7 +12,7 @@ import models
 
 router = APIRouter(prefix="/game-requests", tags=["game-requests"])
 
-VALID_STATUSES = {"pending", "has_deal", "added", "no_deal"}
+VALID_STATUSES = {"pending", "top", "done"}
 PAGE_SIZE = 50
 
 
@@ -128,9 +129,14 @@ def list_game_requests(
     q = db.query(models.GameRequest)
     if status:
         q = q.filter(models.GameRequest.status == status)
+    else:
+        # "All" tab excludes done items
+        q = q.filter(models.GameRequest.status != "done")
     total = q.count()
+    # Top items first, then by date desc
+    priority = case({"top": 0}, value=models.GameRequest.status, else_=1)
     items = (
-        q.order_by(models.GameRequest.created_at.desc())
+        q.order_by(priority, models.GameRequest.created_at.desc())
         .offset((page - 1) * PAGE_SIZE)
         .limit(PAGE_SIZE)
         .all()

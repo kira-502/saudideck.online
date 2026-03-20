@@ -3,24 +3,21 @@ import { api } from "../api";
 
 const STATUS_LABELS = {
   pending: "Pending",
-  has_deal: "Has Deal",
-  added: "Added",
-  no_deal: "No Deal",
+  top: "Top",
+  done: "Done",
 };
 
 const STATUS_STYLE = {
   pending: { background: "rgba(255,193,7,0.15)", color: "var(--amber)" },
-  has_deal: { background: "rgba(100,149,237,0.15)", color: "#6495ed" },
-  added: { background: "rgba(78,205,196,0.15)", color: "var(--green)" },
-  no_deal: { background: "rgba(255,82,82,0.15)", color: "var(--red)" },
+  top: { background: "rgba(78,205,196,0.15)", color: "var(--green)" },
+  done: { background: "rgba(150,150,150,0.15)", color: "var(--muted)" },
 };
 
 const TABS = [
   { key: "", label: "All" },
+  { key: "top", label: "Top" },
   { key: "pending", label: "Pending" },
-  { key: "has_deal", label: "Has Deal" },
-  { key: "added", label: "Added" },
-  { key: "no_deal", label: "No Deal" },
+  { key: "done", label: "Done" },
 ];
 
 function SteamCell({ row, onLinked }) {
@@ -29,6 +26,7 @@ function SteamCell({ row, onLinked }) {
   const [searchError, setSearchError] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [customQuery, setCustomQuery] = useState("");
   const wrapRef = useRef(null);
 
   // Close dropdown when clicking outside
@@ -87,12 +85,13 @@ function SteamCell({ row, onLinked }) {
     );
   }
 
-  const handleSearch = () => {
+  const handleSearch = (query) => {
+    const q = query || row.game_name;
     setSearching(true);
     setSearchError("");
     setResults(null);
     api
-      .steamSearch(row.game_name)
+      .steamSearch(q)
       .then((data) => {
         setResults(data);
         setOpen(true);
@@ -123,7 +122,7 @@ function SteamCell({ row, onLinked }) {
   return (
     <div ref={wrapRef} style={{ position: "relative" }}>
       <button
-        onClick={handleSearch}
+        onClick={() => handleSearch()}
         disabled={searching}
         style={{
           padding: "3px 8px",
@@ -160,10 +159,33 @@ function SteamCell({ row, onLinked }) {
           }}
         >
           {results.length === 0 ? (
-            <div
-              style={{ padding: "8px 12px", fontSize: 12, color: "var(--muted)" }}
-            >
-              No results found
+            <div style={{ padding: "8px 12px" }}>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>No results — try a different name:</div>
+              <div style={{ display: "flex", gap: 4 }}>
+                <input
+                  autoFocus
+                  value={customQuery}
+                  onChange={(e) => setCustomQuery(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && customQuery.trim()) handleSearch(customQuery.trim()); }}
+                  placeholder="Search again…"
+                  style={{
+                    flex: 1,
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 4,
+                    color: "var(--text)",
+                    padding: "4px 7px",
+                    fontSize: 12,
+                  }}
+                />
+                <button
+                  onClick={() => { if (customQuery.trim()) handleSearch(customQuery.trim()); }}
+                  disabled={searching}
+                  style={{ padding: "4px 8px", fontSize: 11, borderRadius: 4, border: "1px solid #7c3aed", background: "rgba(124,58,237,0.12)", color: "#a78bfa", cursor: "pointer" }}
+                >
+                  Go
+                </button>
+              </div>
             </div>
           ) : (
             results.map((r) => {
