@@ -9,6 +9,7 @@ const NAV = [
   { to: "/users", label: "Users", icon: "👤" },
   { to: "/audit-logs", label: "Audit Logs", icon: "📋" },
   { to: "/games-library", label: "Games Library", icon: "🎮" },
+  { to: "/game-requests", label: "Game Requests", icon: "📋" },
 ];
 
 export default function Sidebar() {

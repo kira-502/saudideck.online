@@ -99,6 +99,18 @@ class EmailExtraction(Base):
     raw_data = Column(JSON, nullable=True)
 
 
+# ── New table: game requests ─────────────────────────────────────────────────
+
+class GameRequest(Base):
+    __tablename__ = "game_requests"
+    id = Column(Integer, primary_key=True)
+    created_at = Column(DateTime(timezone=True), default=_now, nullable=False, index=True)
+    game_name = Column(String(200), nullable=False)
+    order_number = Column(String(50), nullable=True)
+    status = Column(String(20), nullable=False, default="pending")  # pending, has_deal, added, no_deal
+    notes = Column(Text, nullable=True)
+
+
 # ── New table: hub audit log ─────────────────────────────────────────────────
 
 class HubAuditLog(Base):

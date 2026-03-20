@@ -27,4 +27,9 @@ export const api = {
   subscriptions: () => req("GET", "/subscriptions"),
   emailExtractions: () => req("GET", "/emails"),
   gamesLibrary: () => req("GET", "/games-library"),
+  gameRequests: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return req("GET", `/game-requests${q ? "?" + q : ""}`);
+  },
+  updateGameRequest: (id, data) => req("PATCH", `/game-requests/${id}`, data),
 };

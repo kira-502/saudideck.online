@@ -12,6 +12,7 @@ from routers import audit_logs as audit_logs_router
 from routers import subscriptions as subscriptions_router
 from routers import emails as emails_router
 from routers import games_library as games_library_router
+from routers import game_requests as game_requests_router
 
 app = FastAPI(title="SaudiDeck Hub", version="1.0.0")
 
@@ -31,6 +32,7 @@ app.include_router(audit_logs_router.router)
 app.include_router(subscriptions_router.router)
 app.include_router(emails_router.router)
 app.include_router(games_library_router.router, tags=["games-library"])
+app.include_router(game_requests_router.router, tags=["game-requests"])
 
 
 @app.get("/health")
