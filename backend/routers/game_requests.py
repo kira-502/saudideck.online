@@ -303,6 +303,81 @@ def delete_game_request(
     return {"ok": True}
 
 
+@router.post("/refresh-prices")
+async def refresh_all_prices(
+    request: Request,
+    db: Session = Depends(_get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Re-fetch Ukraine Steam prices for all linked game requests."""
+    linked = (
+        db.query(models.GameRequest)
+        .filter(models.GameRequest.steam_app_id.isnot(None))
+        .all()
+    )
+    if not linked:
+        return {"updated": 0}
+
+    # Fetch exchange rate once
+    sar_rate: Optional[float] = None
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            fx_resp = await client.get("https://open.er-api.com/v6/latest/UAH")
+            fx_resp.raise_for_status()
+            sar_rate = fx_resp.json().get("rates", {}).get("SAR")
+    except Exception:
+        sar_rate = None
+
+    async def fetch_price(app_id: str):
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(
+                    "https://store.steampowered.com/api/appdetails",
+                    params={"appids": app_id, "cc": "UA", "l": "english"},
+                )
+                resp.raise_for_status()
+                return app_id, resp.json()
+        except Exception:
+            return app_id, None
+
+    app_ids = [gr.steam_app_id for gr in linked]
+    results = await asyncio.gather(*[fetch_price(aid) for aid in app_ids])
+    details_map = {aid: data for aid, data in results}
+
+    updated = 0
+    for gr in linked:
+        detail_data = details_map.get(gr.steam_app_id)
+        if not detail_data or not detail_data.get(gr.steam_app_id, {}).get("success"):
+            continue
+        app_info = detail_data[gr.steam_app_id]["data"]
+        if app_info.get("is_free"):
+            gr.steam_price_uah = 0.0
+            gr.steam_price_sar = 0.0
+            gr.steam_discount = 0
+            updated += 1
+        else:
+            price_overview = app_info.get("price_overview")
+            if price_overview:
+                raw = price_overview.get("final", 0)
+                gr.steam_price_uah = round(raw / 100, 2)
+                if sar_rate is not None:
+                    gr.steam_price_sar = round(gr.steam_price_uah * sar_rate, 2)
+                gr.steam_discount = price_overview.get("discount_percent", 0)
+                updated += 1
+
+    db.commit()
+    log_action(
+        db,
+        user_id=current_user.id,
+        username=current_user.username,
+        action="game_requests_prices_refreshed",
+        resource="game_requests",
+        detail=f"updated={updated}",
+        ip=request.client.host if request.client else None,
+    )
+    return {"updated": updated}
+
+
 @router.patch("/{request_id}")
 def update_game_request(
     request_id: int,

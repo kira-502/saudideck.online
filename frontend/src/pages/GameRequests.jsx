@@ -293,6 +293,8 @@ export default function GameRequests() {
   const [activeTab, setActiveTab] = useState("");
   const [page, setPage] = useState(1);
   const [editingNotes, setEditingNotes] = useState({});
+  const [refreshingPrices, setRefreshingPrices] = useState(false);
+  const [priceMsg, setPriceMsg] = useState("");
 
   const load = (tab = activeTab, pg = page) => {
     setLoading(true);
@@ -408,9 +410,29 @@ export default function GameRequests() {
             </span>
           )}
         </h1>
-        <button className="btn" onClick={() => { load(); loadCounts(); }} disabled={loading}>
-          {loading ? "Refreshing…" : "↻ Refresh"}
-        </button>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {priceMsg && <span style={{ fontSize: 12, color: "var(--green)" }}>{priceMsg}</span>}
+          <button
+            className="btn"
+            disabled={refreshingPrices}
+            onClick={() => {
+              setRefreshingPrices(true);
+              setPriceMsg("");
+              api.refreshAllPrices()
+                .then((r) => {
+                  setPriceMsg(`Updated ${r.updated} game${r.updated !== 1 ? "s" : ""}`);
+                  load();
+                })
+                .catch((e) => setPriceMsg("Failed: " + e.message))
+                .finally(() => setRefreshingPrices(false));
+            }}
+          >
+            {refreshingPrices ? "Updating…" : "↻ Update Prices"}
+          </button>
+          <button className="btn" onClick={() => { load(); loadCounts(); }} disabled={loading}>
+            {loading ? "…" : "↻ Refresh"}
+          </button>
+        </div>
       </div>
 
       {/* Tab bar */}
