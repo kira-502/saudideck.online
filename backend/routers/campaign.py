@@ -14,7 +14,7 @@ SUBS_URL = os.environ.get("SUBS_API_URL", "https://subs.saudideck.online/api/sub
 SUBS_AUTH = (os.environ.get("SUBS_API_USER", "admin"), os.environ.get("SUBS_API_PASS", "SaudiDeck2026"))
 WA_TOKEN = os.environ.get("WA_TOKEN", "")
 WA_PHONE_ID = os.environ.get("WA_PHONE_ID", "")
-TEMPLATE_NAME = "eid_campaign_active"
+TEMPLATE_NAME = "eid"
 TEMPLATE_LANG = "en"
 
 
