@@ -455,7 +455,7 @@ async def upload_contacts(
         try:
             wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
             ws = wb.active
-            headers = [str(c.value).strip() if c.value else "" for c in next(ws.iter_rows())]
+            headers = [str(c.value).strip().lstrip('\ufeff').strip('"') if c.value else "" for c in next(ws.iter_rows())]
             for row in ws.iter_rows(min_row=2, values_only=True):
                 rows.append(dict(zip(headers, row)))
         except Exception:
