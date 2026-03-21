@@ -160,6 +160,22 @@ def list_game_requests(
     }
 
 
+@router.get("/debug-contacts")
+def debug_contacts(
+    db: Session = Depends(_get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    contacts = db.query(models.SallaOrderContact).limit(20).all()
+    requests_with_orders = db.query(models.GameRequest).filter(
+        models.GameRequest.order_number.isnot(None),
+        models.GameRequest.deleted_at.is_(None),
+    ).all()
+    return {
+        "imported_contacts": [{"order": c.order_number, "name": c.customer_name, "phone": c.phone} for c in contacts],
+        "game_request_orders": [{"id": r.id, "game": r.game_name, "order": r.order_number} for r in requests_with_orders],
+    }
+
+
 @router.get("/steam-search")
 async def steam_search(
     q: str,
