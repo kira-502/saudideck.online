@@ -451,13 +451,15 @@ async def upload_contacts(
     rows = []
 
     try:
-        if file.filename and file.filename.endswith(".xlsx"):
+        # Try openpyxl first (handles .xlsx and .xls files that are actually xlsx)
+        try:
             wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
             ws = wb.active
             headers = [str(c.value).strip() if c.value else "" for c in next(ws.iter_rows())]
             for row in ws.iter_rows(min_row=2, values_only=True):
                 rows.append(dict(zip(headers, row)))
-        else:
+        except Exception:
+            # Fall back to xlrd for genuine old .xls files
             wb = xlrd.open_workbook(file_contents=content)
             ws = wb.sheet_by_index(0)
             headers = [str(ws.cell_value(0, c)).strip() for c in range(ws.ncols)]
