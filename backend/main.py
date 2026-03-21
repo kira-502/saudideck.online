@@ -25,16 +25,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth_router.router)
-app.include_router(dashboard_router.router)
-app.include_router(orders_router.router)
-app.include_router(users_router.router)
-app.include_router(audit_logs_router.router)
-app.include_router(subscriptions_router.router)
-app.include_router(emails_router.router)
-app.include_router(games_library_router.router, tags=["games-library"])
-app.include_router(game_requests_router.router, tags=["game-requests"])
-app.include_router(campaign_router.router)
+app.include_router(auth_router.router, prefix="/api")
+app.include_router(dashboard_router.router, prefix="/api")
+app.include_router(orders_router.router, prefix="/api")
+app.include_router(users_router.router, prefix="/api")
+app.include_router(audit_logs_router.router, prefix="/api")
+app.include_router(subscriptions_router.router, prefix="/api")
+app.include_router(emails_router.router, prefix="/api")
+app.include_router(games_library_router.router, prefix="/api", tags=["games-library"])
+app.include_router(game_requests_router.router, prefix="/api", tags=["game-requests"])
+app.include_router(campaign_router.router, prefix="/api")
 
 
 @app.get("/health")

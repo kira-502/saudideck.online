@@ -1,5 +1,5 @@
 // Thin fetch wrapper — all requests go to same origin (backend serves the SPA)
-const BASE = "";
+const BASE = "/api";
 
 async function req(method, path, body) {
   const opts = {
@@ -41,7 +41,7 @@ export const api = {
   uploadContacts: async (file) => {
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch("/game-requests/upload-contacts", {
+    const res = await fetch("/api/game-requests/upload-contacts", {
       method: "POST",
       credentials: "include",
       body: form,
