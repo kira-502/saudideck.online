@@ -318,6 +318,8 @@ export default function GameRequests() {
   const [editingNotes, setEditingNotes] = useState({});
   const [refreshingPrices, setRefreshingPrices] = useState(false);
   const [priceMsg, setPriceMsg] = useState("");
+  const [notifyingId, setNotifyingId] = useState(null);
+  const [notifyError, setNotifyError] = useState("");
 
   const load = (tab = activeTab, pg = page) => {
     setLoading(true);
@@ -413,6 +415,20 @@ export default function GameRequests() {
         loadCounts();
       })
       .catch((e) => setError(e.message));
+  };
+
+  const handleNotify = (id) => {
+    setNotifyingId(id);
+    setNotifyError("");
+    api.notifyInfo(id)
+      .then(({ name, phone, game_name }) => {
+        if (!phone) throw new Error("No phone number found");
+        const msg = `عيدكم مبارك\nعيديتك ${game_name} وصلت يا ${name}\nشكرا لاشتراكك بعضويتنا`;
+        const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+        window.open(url, "_blank");
+      })
+      .catch((e) => setNotifyError(e.message))
+      .finally(() => setNotifyingId(null));
   };
 
   const totalAll = (counts.pending || 0) + (counts.top || 0);
@@ -618,22 +634,37 @@ export default function GameRequests() {
                           {activeTab !== "deleted" && <StatusDropdown row={r} onUpdate={updateStatus} />}
                         </td>
                         <td>
-                          {activeTab === "deleted" ? (
-                            <button
-                              onClick={() => handleRestore(r.id)}
-                              title="Restore request"
-                              style={{ padding: "3px 8px", fontSize: 12, borderRadius: 4, border: "1px solid var(--green)", background: "rgba(78,205,196,0.1)", color: "var(--green)", cursor: "pointer" }}
-                            >
-                              ↩ Restore
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleDelete(r.id)}
-                              title="Delete request"
-                              style={{ padding: "3px 7px", fontSize: 13, borderRadius: 4, border: "1px solid var(--border)", background: "rgba(255,82,82,0.1)", color: "var(--red)", cursor: "pointer" }}
-                            >
-                              🗑
-                            </button>
+                          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            {activeTab === "done" && r.order_number && (
+                              <button
+                                onClick={() => handleNotify(r.id)}
+                                disabled={notifyingId === r.id}
+                                title="Send WhatsApp notification"
+                                style={{ padding: "3px 8px", fontSize: 12, borderRadius: 4, border: "1px solid #25D366", background: "rgba(37,211,102,0.1)", color: "#25D366", cursor: "pointer", whiteSpace: "nowrap" }}
+                              >
+                                {notifyingId === r.id ? "…" : "Notify"}
+                              </button>
+                            )}
+                            {activeTab === "deleted" ? (
+                              <button
+                                onClick={() => handleRestore(r.id)}
+                                title="Restore request"
+                                style={{ padding: "3px 8px", fontSize: 12, borderRadius: 4, border: "1px solid var(--green)", background: "rgba(78,205,196,0.1)", color: "var(--green)", cursor: "pointer" }}
+                              >
+                                ↩ Restore
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleDelete(r.id)}
+                                title="Delete request"
+                                style={{ padding: "3px 7px", fontSize: 13, borderRadius: 4, border: "1px solid var(--border)", background: "rgba(255,82,82,0.1)", color: "var(--red)", cursor: "pointer" }}
+                              >
+                                🗑
+                              </button>
+                            )}
+                          </div>
+                          {notifyError && notifyingId === null && (
+                            <div style={{ color: "var(--red)", fontSize: 11, marginTop: 3 }}>{notifyError}</div>
                           )}
                         </td>
                       </tr>

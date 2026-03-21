@@ -37,6 +37,7 @@ export const api = {
   deleteGameRequest: (id) => req("DELETE", `/game-requests/${id}`),
   restoreGameRequest: (id) => req("POST", `/game-requests/${id}/restore`),
   refreshAllPrices: () => req("POST", "/game-requests/refresh-prices"),
+  notifyInfo: (id) => req("GET", `/game-requests/${id}/notify-info`),
   campaignSubscribers: () => req("GET", "/campaign/subscribers"),
   campaignSend: (data) => req("POST", "/campaign/send", data),
 };

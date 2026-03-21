@@ -8,9 +8,13 @@ from sqlalchemy.orm import Session
 from auth import get_current_user
 from audit import log_action
 from database import get_db
+import os
 import models
 
 router = APIRouter(prefix="/game-requests", tags=["game-requests"])
+
+SUBS_URL = os.environ.get("SUBS_API_URL", "https://subs.saudideck.online/api/subscriptions")
+SUBS_AUTH = (os.environ.get("SUBS_API_USER", "admin"), os.environ.get("SUBS_API_PASS", "SaudiDeck2026"))
 
 VALID_STATUSES = {"pending", "top", "done"}
 PAGE_SIZE = 50
@@ -414,6 +418,41 @@ async def refresh_all_prices(
         ip=request.client.host if request.client else None,
     )
     return {"updated": updated}
+
+
+@router.get("/{request_id}/notify-info")
+async def notify_info(
+    request_id: int,
+    db: Session = Depends(_get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Look up customer name and phone from subscriptions by order number."""
+    gr = db.query(models.GameRequest).filter(models.GameRequest.id == request_id).first()
+    if not gr:
+        raise HTTPException(status_code=404, detail="Game request not found")
+    if not gr.order_number:
+        raise HTTPException(status_code=400, detail="No order number on this request")
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(SUBS_URL, auth=SUBS_AUTH)
+            resp.raise_for_status()
+            subs = resp.json()
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Failed to fetch subscriptions: {e}")
+
+    match = next(
+        (s for s in subs if str(s.get("order_number", "")) == str(gr.order_number)),
+        None,
+    )
+    if not match:
+        raise HTTPException(status_code=404, detail="No subscription found for this order number")
+
+    return {
+        "name": match.get("name") or match.get("customer_name") or "العميل",
+        "phone": match.get("phone") or match.get("phone_number") or "",
+        "game_name": gr.game_name,
+    }
 
 
 @router.patch("/{request_id}")
