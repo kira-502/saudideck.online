@@ -118,6 +118,15 @@ class GameRequest(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
 
+class SallaOrderContact(Base):
+    __tablename__ = "salla_order_contacts"
+    id = Column(Integer, primary_key=True)
+    order_number = Column(String(50), nullable=False, unique=True, index=True)
+    customer_name = Column(String(200), nullable=True)
+    phone = Column(String(30), nullable=True)
+    uploaded_at = Column(DateTime(timezone=True), default=_now, nullable=False)
+
+
 # ── New table: hub audit log ─────────────────────────────────────────────────
 
 class HubAuditLog(Base):

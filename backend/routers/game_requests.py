@@ -1,7 +1,10 @@
 from typing import Optional
 import asyncio
+import io
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request
+import openpyxl
+import xlrd
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, field_validator
 from sqlalchemy import case
 from sqlalchemy.orm import Session
@@ -420,37 +423,96 @@ async def refresh_all_prices(
     return {"updated": updated}
 
 
+@router.post("/upload-contacts")
+async def upload_contacts(
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(_get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Upload a Salla orders XLS/XLSX to populate order → name + phone lookup."""
+    content = await file.read()
+    rows = []
+
+    try:
+        if file.filename and file.filename.endswith(".xlsx"):
+            wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True, data_only=True)
+            ws = wb.active
+            headers = [str(c.value).strip() if c.value else "" for c in next(ws.iter_rows())]
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                rows.append(dict(zip(headers, row)))
+        else:
+            wb = xlrd.open_workbook(file_contents=content)
+            ws = wb.sheet_by_index(0)
+            headers = [str(ws.cell_value(0, c)).strip() for c in range(ws.ncols)]
+            for r in range(1, ws.nrows):
+                rows.append({headers[c]: ws.cell_value(r, c) for c in range(ws.ncols)})
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to parse file: {e}")
+
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    upserted = 0
+
+    for row in rows:
+        order_no = str(row.get("رقم الطلب") or "").strip().split(".")[0]
+        name = str(row.get("اسم العميل") or "").strip()
+        phone = str(row.get("رقم الجوال") or "").strip().lstrip("+")
+        if not order_no or order_no in ("", "nan", "None"):
+            continue
+
+        existing = db.query(models.SallaOrderContact).filter(
+            models.SallaOrderContact.order_number == order_no
+        ).first()
+        if existing:
+            existing.customer_name = name or existing.customer_name
+            existing.phone = phone or existing.phone
+            existing.uploaded_at = now
+        else:
+            db.add(models.SallaOrderContact(
+                order_number=order_no,
+                customer_name=name,
+                phone=phone,
+                uploaded_at=now,
+            ))
+        upserted += 1
+
+    db.commit()
+    log_action(
+        db,
+        user_id=current_user.id,
+        username=current_user.username,
+        action="salla_contacts_uploaded",
+        resource="salla_order_contacts",
+        detail=f"upserted={upserted}",
+        ip=request.client.host if request.client else None,
+    )
+    return {"upserted": upserted}
+
+
 @router.get("/{request_id}/notify-info")
-async def notify_info(
+def notify_info(
     request_id: int,
     db: Session = Depends(_get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    """Look up customer name and phone from subscriptions by order number."""
+    """Look up customer name and phone from uploaded Salla contacts by order number."""
     gr = db.query(models.GameRequest).filter(models.GameRequest.id == request_id).first()
     if not gr:
         raise HTTPException(status_code=404, detail="Game request not found")
     if not gr.order_number:
         raise HTTPException(status_code=400, detail="No order number on this request")
 
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get(SUBS_URL, auth=SUBS_AUTH)
-            resp.raise_for_status()
-            subs = resp.json()
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Failed to fetch subscriptions: {e}")
+    contact = db.query(models.SallaOrderContact).filter(
+        models.SallaOrderContact.order_number == str(gr.order_number)
+    ).first()
 
-    match = next(
-        (s for s in subs if str(s.get("order_number", "")) == str(gr.order_number)),
-        None,
-    )
-    if not match:
-        raise HTTPException(status_code=404, detail="No subscription found for this order number")
+    if not contact:
+        raise HTTPException(status_code=404, detail="No contact found — upload a Salla orders file first")
 
     return {
-        "name": match.get("name") or match.get("customer_name") or "العميل",
-        "phone": match.get("phone") or match.get("phone_number") or "",
+        "name": contact.customer_name or "العميل",
+        "phone": contact.phone or "",
         "game_name": gr.game_name,
     }
 

@@ -320,6 +320,8 @@ export default function GameRequests() {
   const [priceMsg, setPriceMsg] = useState("");
   const [notifyingId, setNotifyingId] = useState(null);
   const [notifyError, setNotifyError] = useState("");
+  const [uploadMsg, setUploadMsg] = useState("");
+  const uploadRef = useRef(null);
 
   const load = (tab = activeTab, pg = page) => {
     setLoading(true);
@@ -452,6 +454,25 @@ export default function GameRequests() {
           )}
         </h1>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {uploadMsg && <span style={{ fontSize: 12, color: "var(--green)" }}>{uploadMsg}</span>}
+          <input
+            ref={uploadRef}
+            type="file"
+            accept=".xls,.xlsx"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files[0];
+              if (!file) return;
+              setUploadMsg("Uploading…");
+              api.uploadContacts(file)
+                .then((r) => setUploadMsg(`Imported ${r.upserted} contacts`))
+                .catch((err) => setUploadMsg("Failed: " + err.message))
+                .finally(() => { uploadRef.current.value = ""; });
+            }}
+          />
+          <button className="btn" onClick={() => uploadRef.current.click()}>
+            Upload Salla Orders
+          </button>
           {priceMsg && <span style={{ fontSize: 12, color: "var(--green)" }}>{priceMsg}</span>}
           {activeTab !== "deleted" && <button
             className="btn"

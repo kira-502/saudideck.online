@@ -38,6 +38,20 @@ export const api = {
   restoreGameRequest: (id) => req("POST", `/game-requests/${id}/restore`),
   refreshAllPrices: () => req("POST", "/game-requests/refresh-prices"),
   notifyInfo: (id) => req("GET", `/game-requests/${id}/notify-info`),
+  uploadContacts: async (file) => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch("/game-requests/upload-contacts", {
+      method: "POST",
+      credentials: "include",
+      body: form,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || res.statusText);
+    }
+    return res.json();
+  },
   campaignSubscribers: () => req("GET", "/campaign/subscribers"),
   campaignSend: (data) => req("POST", "/campaign/send", data),
 };
