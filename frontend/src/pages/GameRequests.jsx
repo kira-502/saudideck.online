@@ -425,7 +425,7 @@ export default function GameRequests() {
     api.notifyInfo(id)
       .then(({ name, phone, game_name }) => {
         if (!phone) throw new Error("No phone number found");
-        const msg = `عيدكم مبارك\nعيديتك ${game_name} وصلت يا ${name}\nشكرا لاشتراكك بعضويتنا`;
+        const msg = `عيدكم مبارك\nعيديتك وصلت يا ${name}\nوفّرنا لك ${game_name} في مكتبتنا\nوالمزيد من الألعاب قادمة\nsaudideck.games`;
         const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
         window.open(url, "_blank");
       })
