@@ -36,6 +36,7 @@ export const api = {
   linkSteam: (id, data) => req("PATCH", `/game-requests/${id}/steam`, data),
   deleteGameRequest: (id) => req("DELETE", `/game-requests/${id}`),
   restoreGameRequest: (id) => req("POST", `/game-requests/${id}/restore`),
+  permanentDeleteGameRequest: (id) => req("DELETE", `/game-requests/${id}/permanent`),
   refreshAllPrices: () => req("POST", "/game-requests/refresh-prices"),
   notifyInfo: (id) => req("GET", `/game-requests/${id}/notify-info`),
   uploadContacts: async (file) => {

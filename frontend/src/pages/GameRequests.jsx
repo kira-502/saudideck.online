@@ -419,6 +419,17 @@ export default function GameRequests() {
       .catch((e) => setError(e.message));
   };
 
+  const handlePermanentDelete = (id) => {
+    if (!window.confirm("Permanently delete this record? This cannot be undone.")) return;
+    api
+      .permanentDeleteGameRequest(id)
+      .then(() => {
+        setData((prev) => prev ? { ...prev, total: prev.total - 1, items: prev.items.filter((r) => r.id !== id) } : prev);
+        loadCounts();
+      })
+      .catch((e) => setError(e.message));
+  };
+
   const handleNotify = (id) => {
     setNotifyingId(id);
     setNotifyError("");
@@ -667,13 +678,22 @@ export default function GameRequests() {
                               </button>
                             )}
                             {activeTab === "deleted" ? (
-                              <button
-                                onClick={() => handleRestore(r.id)}
-                                title="Restore request"
-                                style={{ padding: "3px 8px", fontSize: 12, borderRadius: 4, border: "1px solid var(--green)", background: "rgba(78,205,196,0.1)", color: "var(--green)", cursor: "pointer" }}
-                              >
-                                ↩ Restore
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => handleRestore(r.id)}
+                                  title="Restore request"
+                                  style={{ padding: "3px 8px", fontSize: 12, borderRadius: 4, border: "1px solid var(--green)", background: "rgba(78,205,196,0.1)", color: "var(--green)", cursor: "pointer" }}
+                                >
+                                  ↩ Restore
+                                </button>
+                                <button
+                                  onClick={() => handlePermanentDelete(r.id)}
+                                  title="Permanently delete"
+                                  style={{ padding: "3px 7px", fontSize: 12, borderRadius: 4, border: "1px solid var(--red)", background: "rgba(255,82,82,0.2)", color: "var(--red)", cursor: "pointer", fontWeight: 600 }}
+                                >
+                                  ✕ Permanent
+                                </button>
+                              </>
                             ) : (
                               <button
                                 onClick={() => handleDelete(r.id)}

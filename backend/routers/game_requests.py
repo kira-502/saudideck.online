@@ -364,6 +364,34 @@ def restore_game_request(
     return _serialize(gr)
 
 
+@router.delete("/{request_id}/permanent")
+def permanent_delete_game_request(
+    request_id: int,
+    request: Request,
+    db: Session = Depends(_get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    gr = db.query(models.GameRequest).filter(models.GameRequest.id == request_id).first()
+    if not gr:
+        raise HTTPException(status_code=404, detail="Game request not found")
+
+    game_name = gr.game_name
+    db.delete(gr)
+    db.commit()
+
+    log_action(
+        db,
+        user_id=current_user.id,
+        username=current_user.username,
+        action="game_request_permanently_deleted",
+        resource="game_requests",
+        detail=f"id={request_id} game_name={game_name}",
+        ip=request.client.host if request.client else None,
+    )
+
+    return {"ok": True}
+
+
 @router.post("/refresh-prices")
 async def refresh_all_prices(
     request: Request,
