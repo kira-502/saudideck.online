@@ -140,3 +140,20 @@ class HubAuditLog(Base):
     resource = Column(String(100), nullable=True)         # e.g. "salla_orders", "users"
     detail = Column(Text, nullable=True)                  # free-form detail
     ip_address = Column(String(45), nullable=True)        # IPv4 or IPv6
+
+
+class DevicePriceRecord(Base):
+    __tablename__ = "device_price_records"
+
+    id = Column(Integer, primary_key=True)
+    recorded_at = Column(DateTime(timezone=True), default=_now, nullable=False)
+    model = Column(String(50), nullable=False)
+    cost_aed = Column(Float, nullable=False)
+    aed_to_sar_rate = Column(Float, nullable=False)
+    cost_sar = Column(Float, nullable=False)
+    shipping_sar = Column(Float, nullable=False)
+    sale_price_cash = Column(Float, nullable=False)
+    sale_price_installment = Column(Float, nullable=False)
+    profit_cash = Column(Float, nullable=False)
+    profit_installment = Column(Float, nullable=False)
+    notes = Column(Text, nullable=True)

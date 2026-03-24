@@ -11,6 +11,7 @@ const NAV = [
   { to: "/games-library", label: "Games Library", icon: "🎮" },
   { to: "/game-requests", label: "Game Requests", icon: "📋" },
   { to: "/campaign", label: "Eid Campaign", icon: "🌙" },
+  { to: "/devices", label: "Devices", icon: "🎮" },
 ];
 
 export default function Sidebar() {

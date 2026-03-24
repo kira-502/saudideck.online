@@ -55,4 +55,8 @@ export const api = {
   },
   campaignSubscribers: () => req("GET", "/campaign/subscribers"),
   campaignSend: (data) => req("POST", "/campaign/send", data),
+  aedRate: () => req("GET", "/devices/rate"),
+  deviceRecords: (model) => req("GET", `/devices/records${model ? "?model=" + encodeURIComponent(model) : ""}`),
+  saveDeviceRecord: (data) => req("POST", "/devices/records", data),
+  deleteDeviceRecord: (id) => req("DELETE", `/devices/records/${id}`),
 };
