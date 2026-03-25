@@ -4,18 +4,24 @@ import { api } from "../api";
 const MODELS = ["512GB OLED", "1TB OLED"];
 const SHIPPING = 100;
 const CARD_FEE = 0.025;
-const TABBY_PCT = 0.0699;
-const TABBY_FIXED = 1.50;
-const TABBY_VAT = 0.15;
-const TABBY_REFUND_KEEP = 68;
+const BNPL_PCT = 0.0699;       // Tabby & Tamara: identical rate
+const BNPL_FIXED = 1.50;       // SAR fixed fee per transaction
+const BNPL_VAT = 0.15;         // 15% VAT on fees only
+const BNPL_NON_REF_RATIO = 2 / 7; // ~28.6% of commission is non-refundable (Tabby)
 
 function calcCash(costSar, saleCash) {
   return saleCash * (1 - CARD_FEE) - costSar - SHIPPING;
 }
 
 function calcInstallment(costSar, saleInstall) {
-  const tabbyFee = saleInstall * TABBY_PCT + TABBY_FIXED;
-  return saleInstall - tabbyFee * (1 + TABBY_VAT) - costSar - SHIPPING;
+  const fee = saleInstall * BNPL_PCT + BNPL_FIXED;
+  return saleInstall - fee * (1 + BNPL_VAT) - costSar - SHIPPING;
+}
+
+// What Tabby keeps on a refund: non-refundable commission + fixed fee + VAT on both
+function calcRefundLoss(saleInstall) {
+  const nonRefComm = saleInstall * BNPL_PCT * BNPL_NON_REF_RATIO;
+  return (nonRefComm + BNPL_FIXED) * (1 + BNPL_VAT);
 }
 
 const inputStyle = {
@@ -66,6 +72,7 @@ export default function Devices() {
       costSar,
       profitCash: calcCash(costSar, cash),
       profitInstall: calcInstallment(costSar, install),
+      refundLoss: calcRefundLoss(install),
     };
   };
 
@@ -184,8 +191,8 @@ export default function Devices() {
                     <span style={{ color: profitColor(calc.profitInstall), fontWeight: 600 }}>{fmt(calc.profitInstall)} SAR</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 6, marginTop: 6 }}>
-                    <span className="text-muted">Refund loss (Tabby keeps)</span>
-                    <span style={{ color: "var(--red)" }}>-{TABBY_REFUND_KEEP} SAR</span>
+                    <span className="text-muted">Refund loss (Tabby/Tamara keeps)</span>
+                    <span style={{ color: "var(--red)" }}>-{fmt(calc.refundLoss)} SAR</span>
                   </div>
                 </div>
               )}
