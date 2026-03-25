@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api";
 
 const STATUS_LABELS = {
@@ -21,6 +21,18 @@ const TABS = [
   { key: "deleted", label: "Deleted" },
 ];
 
+// Reusable hook for click-outside detection
+function useClickOutside(ref, enabled, onClose) {
+  useEffect(() => {
+    if (!enabled) return;
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [ref, enabled, onClose]);
+}
+
 function SteamCell({ row, onLinked }) {
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState(null);
@@ -30,33 +42,22 @@ function SteamCell({ row, onLinked }) {
   const [customQuery, setCustomQuery] = useState("");
   const wrapRef = useRef(null);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) {
-        setOpen(false);
-        setResults(null);
-        setSearchError("");
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+  const closeDropdown = useCallback(() => {
+    setOpen(false);
+    setResults(null);
+    setSearchError("");
+  }, []);
+
+  useClickOutside(wrapRef, open, closeDropdown);
+
+  const getSarPrice = (sarVal) => {
+    if (sarVal === 0) return { text: "مجاني", color: "var(--green)" };
+    if (sarVal != null) return { text: sarVal.toFixed(2) + " ر.س", color: "var(--accent)" };
+    return { text: "غير متاح", color: "var(--muted)" };
+  };
 
   if (row.steam_app_id && !editing) {
-    const priceText =
-      row.steam_price_sar === 0
-        ? "مجاني"
-        : row.steam_price_sar != null
-        ? row.steam_price_sar.toFixed(2) + " ر.س"
-        : "غير متاح";
-    const priceColor =
-      row.steam_price_sar === 0
-        ? "var(--green)"
-        : row.steam_price_sar != null
-        ? "var(--accent)"
-        : "var(--muted)";
+    const { text: priceText, color: priceColor } = getSarPrice(row.steam_price_sar);
     return (
       <div style={{ fontSize: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -64,15 +65,18 @@ function SteamCell({ row, onLinked }) {
             href={row.steam_url}
             target="_blank"
             rel="noreferrer"
-            style={{ color: "var(--text)", textDecoration: "none" }}
+            style={{ color: "var(--text)" }}
           >
             {row.steam_name || row.steam_app_id}
           </a>
           <button
             onClick={() => setEditing(true)}
             title="Re-search"
+            aria-label="Re-search Steam"
             style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 11, padding: 0 }}
-          >✎</button>
+          >
+            ✎
+          </button>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
           <span style={{ color: priceColor, fontWeight: 600 }}>{priceText}</span>
@@ -93,10 +97,7 @@ function SteamCell({ row, onLinked }) {
     setResults(null);
     api
       .steamSearch(q)
-      .then((data) => {
-        setResults(data);
-        setOpen(true);
-      })
+      .then((data) => { setResults(data); setOpen(true); })
       .catch((e) => setSearchError(e.message))
       .finally(() => setSearching(false));
   };
@@ -120,28 +121,24 @@ function SteamCell({ row, onLinked }) {
       .catch((e) => setSearchError(e.message));
   };
 
+  const getPriceLabel = (r) => {
+    if (r.is_free) return "مجاني";
+    if (r.not_available) return "غير متاح";
+    if (r.price_sar != null) return r.price_sar.toFixed(2) + " ر.س";
+    return "—";
+  };
+
   return (
     <div ref={wrapRef} style={{ position: "relative" }}>
       <button
         onClick={() => handleSearch()}
         disabled={searching}
-        style={{
-          padding: "3px 8px",
-          fontSize: 11,
-          borderRadius: 4,
-          border: "1px solid #7c3aed",
-          background: "rgba(124,58,237,0.12)",
-          color: "#a78bfa",
-          cursor: searching ? "default" : "pointer",
-          whiteSpace: "nowrap",
-        }}
+        className="btn-steam"
       >
         {searching ? "…" : "Search Steam"}
       </button>
       {searchError && (
-        <div style={{ color: "var(--red)", fontSize: 11, marginTop: 4 }}>
-          {searchError}
-        </div>
+        <div className="text-error" style={{ fontSize: 11, marginTop: 4 }}>{searchError}</div>
       )}
       {open && results && (
         <div
@@ -161,77 +158,60 @@ function SteamCell({ row, onLinked }) {
         >
           {results.length === 0 ? (
             <div style={{ padding: "8px 12px" }}>
-              <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>No results — try a different name:</div>
+              <div className="text-muted" style={{ fontSize: 12, marginBottom: 6 }}>No results — try a different name:</div>
               <div style={{ display: "flex", gap: 4 }}>
                 <input
                   autoFocus
+                  type="text"
                   value={customQuery}
                   onChange={(e) => setCustomQuery(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter" && customQuery.trim()) handleSearch(customQuery.trim()); }}
                   placeholder="Search again…"
-                  style={{
-                    flex: 1,
-                    background: "var(--bg)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 4,
-                    color: "var(--text)",
-                    padding: "4px 7px",
-                    fontSize: 12,
-                  }}
+                  style={{ flex: 1, margin: 0 }}
                 />
                 <button
                   onClick={() => { if (customQuery.trim()) handleSearch(customQuery.trim()); }}
                   disabled={searching}
-                  style={{ padding: "4px 8px", fontSize: 11, borderRadius: 4, border: "1px solid #7c3aed", background: "rgba(124,58,237,0.12)", color: "#a78bfa", cursor: "pointer" }}
+                  className="btn-steam"
                 >
                   Go
                 </button>
               </div>
             </div>
           ) : (
-            results.map((r) => {
-              const priceLabel = r.is_free
-                ? "مجاني"
-                : r.not_available
-                ? "غير متاح"
-                : r.price_sar != null
-                ? r.price_sar.toFixed(2) + " ر.س"
-                : "—";
-              return (
-                <div
-                  key={r.app_id}
-                  onClick={() => handleSelect(r)}
-                  style={{
-                    padding: "8px 12px",
-                    cursor: "pointer",
-                    fontSize: 12,
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: 8,
-                    borderBottom: "1px solid var(--border)",
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.background = "rgba(100,149,237,0.1)")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.background = "transparent")
-                  }
-                >
-                  <span style={{ color: "var(--text)" }}>{r.name}</span>
-                  <span style={{ display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
-                    {r.discount_percent > 0 && (
-                      <span style={{ background: "rgba(78,205,196,0.2)", color: "var(--green)", borderRadius: 3, padding: "1px 5px", fontWeight: 700, fontSize: 10 }}>
-                        -{r.discount_percent}%
-                      </span>
-                    )}
-                    <span style={{ color: r.discount_percent > 0 ? "var(--green)" : "var(--muted)" }}>
-                      {priceLabel}
+            results.map((r) => (
+              <div
+                key={r.app_id}
+                onClick={() => handleSelect(r)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleSelect(r); }}
+                style={{
+                  padding: "8px 12px",
+                  cursor: "pointer",
+                  fontSize: 12,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 8,
+                  borderBottom: "1px solid var(--border)",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(100,149,237,0.1)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                <span>{r.name}</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
+                  {r.discount_percent > 0 && (
+                    <span style={{ background: "rgba(78,205,196,0.2)", color: "var(--green)", borderRadius: 3, padding: "1px 5px", fontWeight: 700, fontSize: 10 }}>
+                      -{r.discount_percent}%
                     </span>
+                  )}
+                  <span className={r.discount_percent > 0 ? "text-success" : "text-muted"}>
+                    {getPriceLabel(r)}
                   </span>
-                </div>
-              );
-            })
+                </span>
+              </div>
+            ))
           )}
         </div>
       )}
@@ -243,14 +223,8 @@ function StatusDropdown({ row, onUpdate }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
+  const close = useCallback(() => setOpen(false), []);
+  useClickOutside(ref, open, close);
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
@@ -266,11 +240,14 @@ function StatusDropdown({ row, onUpdate }) {
           cursor: "pointer",
           whiteSpace: "nowrap",
         }}
+        aria-haspopup="listbox"
+        aria-expanded={open}
       >
         {STATUS_LABELS[row.status] || row.status} ▾
       </button>
       {open && (
         <div
+          role="listbox"
           style={{
             position: "absolute",
             top: "100%",
@@ -287,6 +264,8 @@ function StatusDropdown({ row, onUpdate }) {
           {Object.entries(STATUS_LABELS).map(([s, label]) => (
             <div
               key={s}
+              role="option"
+              aria-selected={s === row.status}
               onClick={() => { onUpdate(row.id, s); setOpen(false); }}
               style={{
                 padding: "7px 12px",
@@ -323,7 +302,7 @@ export default function GameRequests() {
   const [uploadMsg, setUploadMsg] = useState("");
   const uploadRef = useRef(null);
 
-  const load = (tab = activeTab, pg = page) => {
+  const load = useCallback((tab, pg) => {
     setLoading(true);
     setError("");
     const params = { page: pg };
@@ -333,10 +312,9 @@ export default function GameRequests() {
       .then((d) => setData(d))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  };
+  }, []);
 
-  // Load counts for badge display
-  const loadCounts = () => {
+  const loadCounts = useCallback(() => {
     const statuses = ["pending", "top", "done", "deleted"];
     Promise.all(
       statuses.map((s) =>
@@ -347,12 +325,12 @@ export default function GameRequests() {
       results.forEach(([s, t]) => (c[s] = t));
       setCounts(c);
     });
-  };
+  }, []);
 
   useEffect(() => {
     load("", 1);
     loadCounts();
-  }, []);
+  }, [load, loadCounts]);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -368,10 +346,7 @@ export default function GameRequests() {
   const updateStatus = (id, status) => {
     api
       .updateGameRequest(id, { status })
-      .then(() => {
-        load(activeTab, page);
-        loadCounts();
-      })
+      .then(() => { load(activeTab, page); loadCounts(); })
       .catch((e) => setError(e.message));
   };
 
@@ -392,41 +367,31 @@ export default function GameRequests() {
   const handleSteamLinked = (updated) => {
     setData((prev) => {
       if (!prev) return prev;
-      return {
-        ...prev,
-        items: prev.items.map((r) => (r.id === updated.id ? updated : r)),
-      };
+      return { ...prev, items: prev.items.map((r) => (r.id === updated.id ? updated : r)) };
     });
   };
 
+  const removeFromList = (id) => {
+    setData((prev) => prev ? { ...prev, total: prev.total - 1, items: prev.items.filter((r) => r.id !== id) } : prev);
+    loadCounts();
+  };
+
   const handleDelete = (id) => {
-    api
-      .deleteGameRequest(id)
-      .then(() => {
-        setData((prev) => prev ? { ...prev, total: prev.total - 1, items: prev.items.filter((r) => r.id !== id) } : prev);
-        loadCounts();
-      })
+    api.deleteGameRequest(id)
+      .then(() => removeFromList(id))
       .catch((e) => setError(e.message));
   };
 
   const handleRestore = (id) => {
-    api
-      .restoreGameRequest(id)
-      .then(() => {
-        setData((prev) => prev ? { ...prev, total: prev.total - 1, items: prev.items.filter((r) => r.id !== id) } : prev);
-        loadCounts();
-      })
+    api.restoreGameRequest(id)
+      .then(() => removeFromList(id))
       .catch((e) => setError(e.message));
   };
 
   const handlePermanentDelete = (id) => {
     if (!window.confirm("Permanently delete this record? This cannot be undone.")) return;
-    api
-      .permanentDeleteGameRequest(id)
-      .then(() => {
-        setData((prev) => prev ? { ...prev, total: prev.total - 1, items: prev.items.filter((r) => r.id !== id) } : prev);
-        loadCounts();
-      })
+    api.permanentDeleteGameRequest(id)
+      .then(() => removeFromList(id))
       .catch((e) => setError(e.message));
   };
 
@@ -437,8 +402,7 @@ export default function GameRequests() {
       .then(({ name, phone, game_name }) => {
         if (!phone) throw new Error("No phone number found");
         const msg = `عيدكم مبارك\nعيديتك وصلت يا ${name}\nوفّرنا لك ${game_name} في مكتبتنا\nوالمزيد من الألعاب قادمة\nsaudideck.games`;
-        const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-        window.open(url, "_blank");
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
       })
       .catch((e) => setNotifyError(e.message))
       .finally(() => setNotifyingId(null));
@@ -448,24 +412,13 @@ export default function GameRequests() {
 
   return (
     <>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 20,
-        }}
-      >
-        <h1 className="page-title" style={{ margin: 0 }}>
+      <div className="page-header">
+        <h1 className="page-title">
           Game Requests
-          {data && (
-            <span style={{ fontSize: 14, color: "var(--muted)", marginLeft: 10 }}>
-              {data.total} total
-            </span>
-          )}
+          {data && <span className="text-muted" style={{ fontSize: 14, marginLeft: 10 }}>{data.total} total</span>}
         </h1>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {uploadMsg && <span style={{ fontSize: 12, color: "var(--green)" }}>{uploadMsg}</span>}
+        <div className="page-header-actions">
+          {uploadMsg && <span style={{ fontSize: 12, color: uploadMsg.startsWith("Failed") ? "var(--red)" : "var(--green)" }}>{uploadMsg}</span>}
           <input
             ref={uploadRef}
             type="file"
@@ -484,39 +437,30 @@ export default function GameRequests() {
           <button className="btn" onClick={() => uploadRef.current.click()}>
             Upload Salla Orders
           </button>
-          {priceMsg && <span style={{ fontSize: 12, color: "var(--green)" }}>{priceMsg}</span>}
-          {activeTab !== "deleted" && <button
-            className="btn"
-            disabled={refreshingPrices}
-            onClick={() => {
-              setRefreshingPrices(true);
-              setPriceMsg("");
-              api.refreshAllPrices()
-                .then((r) => {
-                  setPriceMsg(`Updated ${r.updated} game${r.updated !== 1 ? "s" : ""}`);
-                  load();
-                })
-                .catch((e) => setPriceMsg("Failed: " + e.message))
-                .finally(() => setRefreshingPrices(false));
-            }}
-          >
-            {refreshingPrices ? "Updating…" : "↻ Update Prices"}
-          </button>}
-          <button className="btn" onClick={() => { load(); loadCounts(); }} disabled={loading}>
+          {priceMsg && <span style={{ fontSize: 12, color: priceMsg.startsWith("Failed") ? "var(--red)" : "var(--green)" }}>{priceMsg}</span>}
+          {activeTab !== "deleted" && (
+            <button
+              className="btn"
+              disabled={refreshingPrices}
+              onClick={() => {
+                setRefreshingPrices(true);
+                setPriceMsg("");
+                api.refreshAllPrices()
+                  .then((r) => { setPriceMsg(`Updated ${r.updated} game${r.updated !== 1 ? "s" : ""}`); load(activeTab, page); })
+                  .catch((e) => setPriceMsg("Failed: " + e.message))
+                  .finally(() => setRefreshingPrices(false));
+              }}
+            >
+              {refreshingPrices ? "Updating…" : "↻ Update Prices"}
+            </button>
+          )}
+          <button className="btn" onClick={() => { load(activeTab, page); loadCounts(); }} disabled={loading}>
             {loading ? "…" : "↻ Refresh"}
           </button>
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          marginBottom: 20,
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="tab-bar" style={{ marginBottom: 20 }}>
         {TABS.map(({ key, label }) => {
           const count = key === "" ? totalAll : counts[key] ?? 0;
           const isActive = activeTab === key;
@@ -527,9 +471,7 @@ export default function GameRequests() {
               style={{
                 padding: "6px 14px",
                 borderRadius: 6,
-                border: isActive
-                  ? "1px solid var(--accent)"
-                  : "1px solid var(--border)",
+                border: isActive ? "1px solid var(--accent)" : "1px solid var(--border)",
                 background: isActive ? "rgba(100,149,237,0.15)" : "var(--surface)",
                 color: isActive ? "var(--accent)" : "var(--muted)",
                 cursor: "pointer",
@@ -556,17 +498,13 @@ export default function GameRequests() {
         })}
       </div>
 
-      {error && (
-        <div style={{ color: "var(--red)", marginBottom: 16 }}>{error}</div>
-      )}
-      {!data && !error && (
-        <div style={{ color: "var(--muted)" }}>Loading…</div>
-      )}
+      {error && <div className="text-error" style={{ marginBottom: 16 }}>{error}</div>}
+      {!data && !error && <div className="state-loading">Loading…</div>}
 
       {data && (
         <>
           {data.items.length === 0 ? (
-            <div style={{ color: "var(--muted)" }}>No game requests found.</div>
+            <div className="state-empty">No game requests found.</div>
           ) : (
             <div className="table-wrap">
               <table>
@@ -584,28 +522,20 @@ export default function GameRequests() {
                 </thead>
                 <tbody>
                   {data.items.map((r) => {
-                    const noteVal =
-                      editingNotes[r.id] !== undefined
-                        ? editingNotes[r.id]
-                        : r.notes || "";
+                    const noteVal = editingNotes[r.id] !== undefined ? editingNotes[r.id] : r.notes || "";
                     const isEditingNote = editingNotes[r.id] !== undefined;
 
                     return (
                       <tr key={r.id}>
-                        <td style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
+                        <td className="text-muted" style={{ fontSize: 12, whiteSpace: "nowrap" }}>
                           {r.created_at
                             ? new Date(r.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
                             : "—"}
                         </td>
                         <td style={{ fontWeight: 500 }}>{r.game_name}</td>
-                        <td style={{ fontSize: 12, color: "var(--muted)" }}>
-                          {r.order_number || "—"}
-                        </td>
+                        <td className="text-muted" style={{ fontSize: 12 }}>{r.order_number || "—"}</td>
                         <td>
-                          <span
-                            className="badge"
-                            style={STATUS_STYLE[r.status] || {}}
-                          >
+                          <span className="badge" style={STATUS_STYLE[r.status] || {}}>
                             {STATUS_LABELS[r.status] || r.status}
                           </span>
                         </td>
@@ -616,6 +546,7 @@ export default function GameRequests() {
                           {isEditingNote ? (
                             <input
                               autoFocus
+                              type="text"
                               value={noteVal}
                               style={{
                                 background: "var(--surface)",
@@ -625,12 +556,10 @@ export default function GameRequests() {
                                 padding: "3px 6px",
                                 fontSize: 12,
                                 width: "100%",
+                                margin: 0,
                               }}
                               onChange={(e) =>
-                                setEditingNotes((prev) => ({
-                                  ...prev,
-                                  [r.id]: e.target.value,
-                                }))
+                                setEditingNotes((prev) => ({ ...prev, [r.id]: e.target.value }))
                               }
                               onBlur={() => saveNotes(r.id, noteVal)}
                               onKeyDown={(e) => {
@@ -646,17 +575,8 @@ export default function GameRequests() {
                           ) : (
                             <span
                               title="Click to edit notes"
-                              style={{
-                                cursor: "pointer",
-                                color: r.notes ? "var(--text)" : "var(--muted)",
-                                fontSize: 12,
-                              }}
-                              onClick={() =>
-                                setEditingNotes((prev) => ({
-                                  ...prev,
-                                  [r.id]: r.notes || "",
-                                }))
-                              }
+                              style={{ cursor: "pointer", color: r.notes ? "var(--text)" : "var(--muted)", fontSize: 12 }}
+                              onClick={() => setEditingNotes((prev) => ({ ...prev, [r.id]: r.notes || "" }))}
                             >
                               {r.notes || <em>add note…</em>}
                             </span>
@@ -671,8 +591,9 @@ export default function GameRequests() {
                               <button
                                 onClick={() => handleNotify(r.id)}
                                 disabled={notifyingId === r.id}
+                                className="btn-notify"
                                 title="Send WhatsApp notification"
-                                style={{ padding: "3px 8px", fontSize: 12, borderRadius: 4, border: "1px solid #25D366", background: "rgba(37,211,102,0.1)", color: "#25D366", cursor: "pointer", whiteSpace: "nowrap" }}
+                                aria-label={`Notify customer for ${r.game_name}`}
                               >
                                 {notifyingId === r.id ? "…" : "Notify"}
                               </button>
@@ -681,15 +602,17 @@ export default function GameRequests() {
                               <>
                                 <button
                                   onClick={() => handleRestore(r.id)}
+                                  className="btn-restore"
                                   title="Restore request"
-                                  style={{ padding: "3px 8px", fontSize: 12, borderRadius: 4, border: "1px solid var(--green)", background: "rgba(78,205,196,0.1)", color: "var(--green)", cursor: "pointer" }}
+                                  aria-label={`Restore ${r.game_name}`}
                                 >
                                   ↩ Restore
                                 </button>
                                 <button
                                   onClick={() => handlePermanentDelete(r.id)}
+                                  className="btn-perm-delete"
                                   title="Permanently delete"
-                                  style={{ padding: "3px 7px", fontSize: 12, borderRadius: 4, border: "1px solid var(--red)", background: "rgba(255,82,82,0.2)", color: "var(--red)", cursor: "pointer", fontWeight: 600 }}
+                                  aria-label={`Permanently delete ${r.game_name}`}
                                 >
                                   ✕ Permanent
                                 </button>
@@ -697,15 +620,16 @@ export default function GameRequests() {
                             ) : (
                               <button
                                 onClick={() => handleDelete(r.id)}
+                                className="btn-delete"
                                 title="Delete request"
-                                style={{ padding: "3px 7px", fontSize: 13, borderRadius: 4, border: "1px solid var(--border)", background: "rgba(255,82,82,0.1)", color: "var(--red)", cursor: "pointer" }}
+                                aria-label={`Delete ${r.game_name}`}
                               >
                                 🗑
                               </button>
                             )}
                           </div>
                           {notifyError && notifyingId === null && (
-                            <div style={{ color: "var(--red)", fontSize: 11, marginTop: 3 }}>{notifyError}</div>
+                            <div className="text-error" style={{ fontSize: 11, marginTop: 3 }}>{notifyError}</div>
                           )}
                         </td>
                       </tr>
@@ -716,33 +640,11 @@ export default function GameRequests() {
             </div>
           )}
 
-          {/* Pagination */}
           {data.pages > 1 && (
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                marginTop: 16,
-                alignItems: "center",
-              }}
-            >
-              <button
-                className="btn"
-                disabled={page <= 1}
-                onClick={() => handlePageChange(page - 1)}
-              >
-                ← Prev
-              </button>
-              <span style={{ color: "var(--muted)", fontSize: 13 }}>
-                Page {page} of {data.pages}
-              </span>
-              <button
-                className="btn"
-                disabled={page >= data.pages}
-                onClick={() => handlePageChange(page + 1)}
-              >
-                Next →
-              </button>
+            <div className="pagination" style={{ justifyContent: "flex-start" }}>
+              <button className="btn" disabled={page <= 1} onClick={() => handlePageChange(page - 1)}>← Prev</button>
+              <span className="pagination-info">Page {page} of {data.pages}</span>
+              <button className="btn" disabled={page >= data.pages} onClick={() => handlePageChange(page + 1)}>Next →</button>
             </div>
           )}
         </>

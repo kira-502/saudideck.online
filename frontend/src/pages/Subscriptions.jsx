@@ -35,19 +35,19 @@ export default function Subscriptions() {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h1 className="page-title" style={{ margin: 0 }}>Subscriptions</h1>
+      <div className="page-header">
+        <h1 className="page-title">Subscriptions</h1>
         <button className="btn" onClick={load} disabled={loading}>
           {loading ? "Refreshing…" : "↻ Refresh"}
         </button>
       </div>
 
-      {error && <div style={{ color: "var(--red)", marginBottom: 16 }}>{error}</div>}
+      {error && <div className="text-error" style={{ marginBottom: 16 }}>{error}</div>}
+      {!data && !error && <div className="state-loading">Loading…</div>}
 
       {data && (
         <>
-          {/* Stat cards */}
-          <div className="stat-grid" style={{ marginBottom: 20 }}>
+          <div className="stat-grid">
             <div className="stat-card">
               <div className="stat-label">Active</div>
               <div className="stat-value" style={{ color: "var(--green)" }}>{data.stats.active}</div>
@@ -72,7 +72,6 @@ export default function Subscriptions() {
             </div>
           </div>
 
-          {/* Search */}
           <input
             type="text"
             placeholder="Search by name, order ID, phone, product…"
@@ -81,11 +80,10 @@ export default function Subscriptions() {
             style={{ marginBottom: 12, width: 320 }}
           />
 
-          <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 8 }}>
+          <div className="records-count">
             {filtered.length} of {data.stats.total} subscribers
           </div>
 
-          {/* Table */}
           <div className="table-wrap">
             <table>
               <thead>
@@ -104,7 +102,7 @@ export default function Subscriptions() {
                   <tr key={s.orderId}>
                     <td>
                       <div>{s.customerName}</div>
-                      <div style={{ fontSize: 11, color: "var(--muted)" }}>{s.phone}</div>
+                      <div className="text-muted" style={{ fontSize: 11 }}>{s.phone}</div>
                     </td>
                     <td style={{ fontSize: 12 }}>{s.productName}</td>
                     <td>
@@ -112,22 +110,18 @@ export default function Subscriptions() {
                         {s.status}
                       </span>
                     </td>
-                    <td style={{ color: "var(--muted)", fontSize: 12 }}>{s.expiryDate}</td>
+                    <td className="text-muted" style={{ fontSize: 12 }}>{s.expiryDate}</td>
                     <td style={{ color: s.daysRemaining <= 7 ? "var(--red)" : s.daysRemaining <= 30 ? "var(--amber)" : "var(--text)" }}>
                       {s.daysRemaining}
                     </td>
-                    <td style={{ color: "var(--muted)" }}>{s.price} SAR</td>
-                    <td style={{ color: "var(--muted)", fontSize: 12 }}>{s.isDevice ? "Yes" : "No"}</td>
+                    <td className="text-muted">{s.price} SAR</td>
+                    <td className="text-muted" style={{ fontSize: 12 }}>{s.isDevice ? "Yes" : "No"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </>
-      )}
-
-      {!data && !error && !loading && (
-        <div style={{ color: "var(--muted)" }}>Loading…</div>
       )}
     </>
   );

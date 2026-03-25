@@ -9,9 +9,9 @@ const NAV = [
   { to: "/users", label: "Users", icon: "👤" },
   { to: "/audit-logs", label: "Audit Logs", icon: "📋" },
   { to: "/games-library", label: "Games Library", icon: "🎮" },
-  { to: "/game-requests", label: "Game Requests", icon: "📋" },
+  { to: "/game-requests", label: "Game Requests", icon: "🕹️" },
   { to: "/campaign", label: "Eid Campaign", icon: "🌙" },
-  { to: "/devices", label: "Devices", icon: "🎮" },
+  { to: "/devices", label: "Devices", icon: "💻" },
 ];
 
 export default function Sidebar() {
@@ -24,7 +24,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" aria-label="Main navigation">
       <div className="sidebar-brand">
         <h2>SaudiDeck</h2>
         <span>Admin Hub</span>
@@ -37,14 +37,12 @@ export default function Sidebar() {
             end={to === "/"}
             className={({ isActive }) => `nav-item${isActive ? " active" : ""}`}
           >
-            <span>{icon}</span> {label}
+            <span aria-hidden="true">{icon}</span> {label}
           </NavLink>
         ))}
       </nav>
-      <div style={{ padding: "12px 16px", borderTop: "1px solid var(--border)" }}>
-        <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>
-          {user?.username}
-        </div>
+      <div className="sidebar-footer">
+        <div className="sidebar-username">{user?.username}</div>
         <button className="btn" style={{ width: "100%" }} onClick={handleLogout}>
           Logout
         </button>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { api } from "../api";
 
 const MODELS = ["512GB OLED", "1TB OLED"];
@@ -10,16 +10,26 @@ const TABBY_VAT = 0.15;
 const TABBY_REFUND_KEEP = 68;
 
 function calcCash(costSar, saleCash) {
-  const received = saleCash * (1 - CARD_FEE);
-  return received - costSar - SHIPPING;
+  return saleCash * (1 - CARD_FEE) - costSar - SHIPPING;
 }
 
 function calcInstallment(costSar, saleInstall) {
   const tabbyFee = saleInstall * TABBY_PCT + TABBY_FIXED;
-  const tabbyWithVat = tabbyFee * (1 + TABBY_VAT);
-  const received = saleInstall - tabbyWithVat;
-  return received - costSar - SHIPPING;
+  return saleInstall - tabbyFee * (1 + TABBY_VAT) - costSar - SHIPPING;
 }
+
+const inputStyle = {
+  display: "block",
+  width: "100%",
+  marginTop: 4,
+  padding: "6px 10px",
+  background: "var(--bg)",
+  border: "1px solid var(--border)",
+  borderRadius: 4,
+  color: "var(--text)",
+  fontSize: 14,
+  marginBottom: 0,
+};
 
 export default function Devices() {
   const [rate, setRate] = useState(null);
@@ -33,8 +43,16 @@ export default function Devices() {
   const [saving, setSaving] = useState({});
   const [error, setError] = useState("");
 
+  const refreshRate = () => {
+    setRateLoading(true);
+    api.aedRate()
+      .then(({ rate: r }) => setRate(r))
+      .catch(() => setRate(1.0219))
+      .finally(() => setRateLoading(false));
+  };
+
   useEffect(() => {
-    api.aedRate().then(({ rate }) => { setRate(rate); setRateLoading(false); }).catch(() => { setRate(1.0219); setRateLoading(false); });
+    refreshRate();
     api.deviceRecords().then(setRecords).catch(() => {}).finally(() => setRecordsLoading(false));
   }, []);
 
@@ -48,7 +66,6 @@ export default function Devices() {
       costSar,
       profitCash: calcCash(costSar, cash),
       profitInstall: calcInstallment(costSar, install),
-      refundLoss: TABBY_REFUND_KEEP,
     };
   };
 
@@ -87,25 +104,26 @@ export default function Devices() {
     }
   };
 
-  const fmt = (n) => typeof n === "number" ? n.toFixed(2) : "—";
-  const profitColor = (n) => n > 0 ? "var(--green)" : "var(--red)";
+  const fmt = (n) => (typeof n === "number" ? n.toFixed(2) : "—");
+  const profitColor = (n) => (n > 0 ? "var(--green)" : "var(--red)");
 
   return (
-    <div style={{ padding: "24px", maxWidth: 900 }}>
+    <div style={{ maxWidth: 900 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 24 }}>
         <h1 style={{ margin: 0, fontSize: 22 }}>Steam Deck Pricing</h1>
-        <span style={{ fontSize: 13, color: "var(--muted)" }}>
+        <span className="text-muted" style={{ fontSize: 13 }}>
           {rateLoading ? "Loading rate…" : `1 AED = ${rate?.toFixed(4)} SAR`}
         </span>
         <button
-          onClick={() => { setRateLoading(true); api.aedRate().then(({ rate }) => { setRate(rate); setRateLoading(false); }); }}
-          style={{ fontSize: 12, padding: "3px 10px", borderRadius: 4, border: "1px solid var(--border)", background: "transparent", color: "var(--muted)", cursor: "pointer" }}
+          className="btn"
+          onClick={refreshRate}
+          style={{ fontSize: 12, padding: "3px 10px" }}
         >
           ↻ Refresh Rate
         </button>
       </div>
 
-      {error && <div style={{ color: "var(--red)", marginBottom: 12, fontSize: 13 }}>{error}</div>}
+      {error && <div className="text-error" style={{ marginBottom: 12, fontSize: 13 }}>{error}</div>}
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 32 }}>
         {MODELS.map((model) => {
@@ -122,11 +140,14 @@ export default function Devices() {
                     value={costAed[model]}
                     onChange={(e) => setCostAed((p) => ({ ...p, [model]: e.target.value }))}
                     placeholder="e.g. 1400"
-                    style={{ display: "block", width: "100%", marginTop: 4, padding: "6px 10px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)", fontSize: 14 }}
+                    style={inputStyle}
                   />
                 </label>
-                <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                  Cost in SAR: <span style={{ color: "var(--text)" }}>{costAed[model] && rate ? `${(parseFloat(costAed[model]) * rate).toFixed(2)} SAR` : "—"}</span>
+                <div className="text-muted" style={{ fontSize: 12 }}>
+                  Cost in SAR:{" "}
+                  <span style={{ color: "var(--text)" }}>
+                    {costAed[model] && rate ? `${(parseFloat(costAed[model]) * rate).toFixed(2)} SAR` : "—"}
+                  </span>
                 </div>
                 <label style={{ fontSize: 12, color: "var(--muted)" }}>
                   Cash Sale Price (SAR)
@@ -134,7 +155,7 @@ export default function Devices() {
                     type="number"
                     value={saleCash[model]}
                     onChange={(e) => setSaleCash((p) => ({ ...p, [model]: e.target.value }))}
-                    style={{ display: "block", width: "100%", marginTop: 4, padding: "6px 10px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)", fontSize: 14 }}
+                    style={inputStyle}
                   />
                 </label>
                 <label style={{ fontSize: 12, color: "var(--muted)" }}>
@@ -143,7 +164,7 @@ export default function Devices() {
                     type="number"
                     value={saleInstall[model]}
                     onChange={(e) => setSaleInstall((p) => ({ ...p, [model]: e.target.value }))}
-                    style={{ display: "block", width: "100%", marginTop: 4, padding: "6px 10px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)", fontSize: 14 }}
+                    style={inputStyle}
                   />
                 </label>
               </div>
@@ -151,19 +172,19 @@ export default function Devices() {
               {calc && (
                 <div style={{ background: "var(--bg)", borderRadius: 6, padding: 12, marginBottom: 12, fontSize: 13 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                    <span style={{ color: "var(--muted)" }}>Shipping</span>
-                    <span>100 SAR</span>
+                    <span className="text-muted">Shipping</span>
+                    <span>{SHIPPING} SAR</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                    <span style={{ color: "var(--muted)" }}>Cash profit</span>
+                    <span className="text-muted">Cash profit</span>
                     <span style={{ color: profitColor(calc.profitCash), fontWeight: 600 }}>{fmt(calc.profitCash)} SAR</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                    <span style={{ color: "var(--muted)" }}>Installment profit</span>
+                    <span className="text-muted">Installment profit</span>
                     <span style={{ color: profitColor(calc.profitInstall), fontWeight: 600 }}>{fmt(calc.profitInstall)} SAR</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid var(--border)", paddingTop: 6, marginTop: 6 }}>
-                    <span style={{ color: "var(--muted)" }}>Refund loss (Tabby keeps)</span>
+                    <span className="text-muted">Refund loss (Tabby keeps)</span>
                     <span style={{ color: "var(--red)" }}>-{TABBY_REFUND_KEEP} SAR</span>
                   </div>
                 </div>
@@ -176,14 +197,25 @@ export default function Devices() {
                   value={notes[model]}
                   onChange={(e) => setNotes((p) => ({ ...p, [model]: e.target.value }))}
                   placeholder="e.g. price drop this week"
-                  style={{ display: "block", width: "100%", marginTop: 4, padding: "6px 10px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)", fontSize: 13 }}
+                  style={{ ...inputStyle, fontSize: 13 }}
                 />
               </label>
 
               <button
                 onClick={() => handleSave(model)}
                 disabled={!calc || saving[model]}
-                style={{ width: "100%", padding: "8px", borderRadius: 4, border: "none", background: calc ? "var(--accent)" : "var(--border)", color: calc ? "#000" : "var(--muted)", cursor: calc ? "pointer" : "not-allowed", fontWeight: 600, fontSize: 13 }}
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  borderRadius: 4,
+                  border: "none",
+                  background: calc ? "var(--accent)" : "var(--border)",
+                  color: calc ? "#000" : "var(--muted)",
+                  cursor: calc ? "pointer" : "not-allowed",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  transition: "opacity .15s",
+                }}
               >
                 {saving[model] ? "Saving…" : "Save Snapshot"}
               </button>
@@ -194,47 +226,50 @@ export default function Devices() {
 
       <h2 style={{ fontSize: 16, marginBottom: 12 }}>Price History</h2>
       {recordsLoading ? (
-        <div style={{ color: "var(--muted)", fontSize: 13 }}>Loading…</div>
+        <div className="state-loading" style={{ fontSize: 13 }}>Loading…</div>
       ) : records.length === 0 ? (
-        <div style={{ color: "var(--muted)", fontSize: 13 }}>No records yet.</div>
+        <div className="state-empty" style={{ fontSize: 13 }}>No records yet.</div>
       ) : (
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-          <thead>
-            <tr style={{ borderBottom: "1px solid var(--border)", color: "var(--muted)", textAlign: "left" }}>
-              <th style={{ padding: "6px 10px" }}>Date</th>
-              <th style={{ padding: "6px 10px" }}>Model</th>
-              <th style={{ padding: "6px 10px" }}>Cost (AED)</th>
-              <th style={{ padding: "6px 10px" }}>Cost (SAR)</th>
-              <th style={{ padding: "6px 10px" }}>Cash Profit</th>
-              <th style={{ padding: "6px 10px" }}>Install Profit</th>
-              <th style={{ padding: "6px 10px" }}>Notes</th>
-              <th style={{ padding: "6px 10px" }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {records.map((r) => (
-              <tr key={r.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                <td style={{ padding: "8px 10px", color: "var(--muted)" }}>
-                  {new Date(r.recorded_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                </td>
-                <td style={{ padding: "8px 10px", fontWeight: 600 }}>{r.model}</td>
-                <td style={{ padding: "8px 10px" }}>{r.cost_aed} AED</td>
-                <td style={{ padding: "8px 10px" }}>{r.cost_sar.toFixed(2)} SAR</td>
-                <td style={{ padding: "8px 10px", color: r.profit_cash > 0 ? "var(--green)" : "var(--red)", fontWeight: 600 }}>{r.profit_cash.toFixed(2)} SAR</td>
-                <td style={{ padding: "8px 10px", color: r.profit_installment > 0 ? "var(--green)" : "var(--red)", fontWeight: 600 }}>{r.profit_installment.toFixed(2)} SAR</td>
-                <td style={{ padding: "8px 10px", color: "var(--muted)" }}>{r.notes || "—"}</td>
-                <td style={{ padding: "8px 10px" }}>
-                  <button
-                    onClick={() => handleDelete(r.id)}
-                    style={{ padding: "3px 7px", fontSize: 13, borderRadius: 4, border: "1px solid var(--border)", background: "rgba(255,82,82,0.1)", color: "var(--red)", cursor: "pointer" }}
-                  >
-                    🗑
-                  </button>
-                </td>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Model</th>
+                <th>Cost (AED)</th>
+                <th>Cost (SAR)</th>
+                <th>Cash Profit</th>
+                <th>Install Profit</th>
+                <th>Notes</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {records.map((r) => (
+                <tr key={r.id}>
+                  <td className="text-muted">
+                    {new Date(r.recorded_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                  </td>
+                  <td style={{ fontWeight: 600 }}>{r.model}</td>
+                  <td>{r.cost_aed} AED</td>
+                  <td>{r.cost_sar.toFixed(2)} SAR</td>
+                  <td style={{ color: profitColor(r.profit_cash), fontWeight: 600 }}>{r.profit_cash.toFixed(2)} SAR</td>
+                  <td style={{ color: profitColor(r.profit_installment), fontWeight: 600 }}>{r.profit_installment.toFixed(2)} SAR</td>
+                  <td className="text-muted">{r.notes || "—"}</td>
+                  <td>
+                    <button
+                      className="btn-delete"
+                      onClick={() => handleDelete(r.id)}
+                      aria-label={`Delete price record for ${r.model}`}
+                    >
+                      🗑
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

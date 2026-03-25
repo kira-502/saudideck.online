@@ -23,34 +23,34 @@ export default function Emails() {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h1 className="page-title" style={{ margin: 0 }}>Email Extractions</h1>
+      <div className="page-header">
+        <h1 className="page-title">Email Extractions</h1>
         <button className="btn" onClick={load} disabled={loading}>
           {loading ? "Refreshing…" : "↻ Refresh"}
         </button>
       </div>
 
-      <p style={{ color: "var(--muted)", fontSize: 12, marginBottom: 16 }}>
+      <p className="text-muted" style={{ fontSize: 12, marginBottom: 16 }}>
         Every time a team member runs the email extractor, it appears here. You can download the full data as CSV.
       </p>
 
-      {error && <div style={{ color: "var(--red)", marginBottom: 12 }}>{error}</div>}
-      {!rows && !error && <div style={{ color: "var(--muted)" }}>Loading…</div>}
+      {error && <div className="text-error" style={{ marginBottom: 12 }}>{error}</div>}
+      {!rows && !error && <div className="state-loading">Loading…</div>}
 
       {rows && rows.length === 0 && (
-        <div style={{ color: "var(--muted)" }}>No extractions yet. Team members need to run the email extractor first.</div>
+        <div className="state-empty">No extractions yet. Team members need to run the email extractor first.</div>
       )}
 
       {rows && rows.length > 0 && (
         <>
-          <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 10 }}>
+          <div className="records-count">
             {rows.length} extraction{rows.length !== 1 ? "s" : ""}
           </div>
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>Date & Time</th>
+                  <th>Date &amp; Time</th>
                   <th>Run By</th>
                   <th>Emails Found</th>
                   <th>Download</th>
@@ -59,7 +59,7 @@ export default function Emails() {
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id}>
-                    <td style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>
+                    <td className="text-muted" style={{ whiteSpace: "nowrap" }}>
                       {r.run_at ? new Date(r.run_at).toLocaleString() : "—"}
                     </td>
                     <td style={{ fontSize: 12 }}>{r.triggered_by || "—"}</td>
@@ -67,8 +67,12 @@ export default function Emails() {
                       <span className="badge badge-blue">{r.email_count ?? "—"}</span>
                     </td>
                     <td>
-                      <button className="btn" style={{ padding: "4px 10px", fontSize: 12 }}
-                        onClick={() => download(r.id)}>
+                      <button
+                        className="btn"
+                        style={{ padding: "4px 10px", fontSize: 12 }}
+                        onClick={() => download(r.id)}
+                        aria-label={`Download CSV for extraction ${r.id}`}
+                      >
                         ↓ CSV
                       </button>
                     </td>

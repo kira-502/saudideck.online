@@ -9,8 +9,8 @@ export default function Users() {
     api.users().then(setUsers).catch((e) => setError(e.message));
   }, []);
 
-  if (error) return <div style={{ color: "var(--red)" }}>{error}</div>;
-  if (!users) return <div style={{ color: "var(--muted)" }}>Loading…</div>;
+  if (error) return <div className="text-error">{error}</div>;
+  if (!users) return <div className="state-loading">Loading…</div>;
 
   return (
     <>
@@ -26,17 +26,17 @@ export default function Users() {
           <tbody>
             {users.map((u) => (
               <tr key={u.id}>
-                <td style={{ color: "var(--muted)" }}>{u.id}</td>
+                <td className="text-muted">{u.id}</td>
                 <td>{u.username}</td>
                 <td>
                   <span className={`badge ${u.role === "admin" ? "badge-amber" : "badge-muted"}`}>
                     {u.role}
                   </span>
                 </td>
-                <td style={{ color: "var(--muted)" }}>
+                <td className="text-muted">
                   {u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}
                 </td>
-                <td style={{ color: "var(--muted)" }}>
+                <td className="text-muted">
                   {u.last_login ? new Date(u.last_login).toLocaleString() : "Never"}
                 </td>
               </tr>

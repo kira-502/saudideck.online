@@ -22,22 +22,22 @@ export default function AuditLogs() {
     api.auditLogs(page).then(setData).catch((e) => setError(e.message));
   }, [page]);
 
-  if (error) return <div style={{ color: "var(--red)" }}>{error}</div>;
+  const totalPages = data ? Math.ceil(data.total / data.page_size) : 1;
+
+  if (error) return <div className="text-error">{error}</div>;
 
   return (
     <>
       <h1 className="page-title">Audit Logs</h1>
-      <p style={{ color: "var(--muted)", fontSize: 12, marginBottom: 16 }}>
+      <p className="text-muted" style={{ fontSize: 12, marginBottom: 16 }}>
         Every action you take in this hub is recorded here.
       </p>
 
-      {!data && <div style={{ color: "var(--muted)" }}>Loading…</div>}
+      {!data && <div className="state-loading">Loading…</div>}
 
       {data && (
         <>
-          <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 10 }}>
-            {data.total.toLocaleString()} total entries
-          </div>
+          <div className="records-count">{data.total.toLocaleString()} total entries</div>
           <div className="table-wrap">
             <table>
               <thead>
@@ -49,7 +49,7 @@ export default function AuditLogs() {
               <tbody>
                 {data.items.map((row) => (
                   <tr key={row.id}>
-                    <td style={{ color: "var(--muted)", whiteSpace: "nowrap" }}>
+                    <td className="text-muted" style={{ whiteSpace: "nowrap" }}>
                       {new Date(row.timestamp).toLocaleString()}
                     </td>
                     <td>{row.username || "—"}</td>
@@ -58,9 +58,9 @@ export default function AuditLogs() {
                         {row.action}
                       </span>
                     </td>
-                    <td style={{ color: "var(--muted)" }}>{row.resource || "—"}</td>
-                    <td style={{ color: "var(--muted)", fontSize: 12 }}>{row.detail || "—"}</td>
-                    <td style={{ color: "var(--muted)", fontSize: 11 }}>{row.ip_address || "—"}</td>
+                    <td className="text-muted">{row.resource || "—"}</td>
+                    <td className="text-muted" style={{ fontSize: 12 }}>{row.detail || "—"}</td>
+                    <td className="text-muted" style={{ fontSize: 11 }}>{row.ip_address || "—"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -68,14 +68,8 @@ export default function AuditLogs() {
           </div>
           <div className="pagination">
             <button className="btn" disabled={page === 1} onClick={() => setPage(page - 1)}>← Prev</button>
-            <span style={{ color: "var(--muted)", fontSize: 12 }}>
-              Page {page} of {Math.ceil(data.total / data.page_size)}
-            </span>
-            <button className="btn"
-              disabled={page >= Math.ceil(data.total / data.page_size)}
-              onClick={() => setPage(page + 1)}>
-              Next →
-            </button>
+            <span className="pagination-info">Page {page} of {totalPages}</span>
+            <button className="btn" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Next →</button>
           </div>
         </>
       )}

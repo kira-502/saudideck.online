@@ -11,8 +11,7 @@ const STATUS_COLOR = {
 function formatExpiry(dateStr) {
   if (!dateStr) return "—";
   try {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString("ar-SA", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return new Date(dateStr).toLocaleDateString("ar-SA", { day: "2-digit", month: "2-digit", year: "numeric" });
   } catch {
     return dateStr;
   }
@@ -32,11 +31,7 @@ export default function Campaign() {
     setTestSending(true);
     setTestStatus("");
     try {
-      await api.campaignSend({
-        phone: "966503505084",
-        name: "Mohammed",
-        expiry_date: "01/05/2026",
-      });
+      await api.campaignSend({ phone: "966503505084", name: "Mohammed", expiry_date: "01/05/2026" });
       setTestStatus("✓ Sent successfully");
     } catch (e) {
       setTestStatus("✗ " + e.message);
@@ -77,7 +72,7 @@ export default function Campaign() {
     const unsent = subs.filter((s) => !sentMap[s.phone || s.id]);
     for (const sub of unsent) {
       await sendOne(sub);
-      await new Promise((r) => setTimeout(r, 500)); // 500ms gap to avoid rate limits
+      await new Promise((r) => setTimeout(r, 500));
     }
     setSendingAll(false);
   };
@@ -87,18 +82,14 @@ export default function Campaign() {
 
   return (
     <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h1 className="page-title" style={{ margin: 0 }}>
+      <div className="page-header">
+        <h1 className="page-title">
           Eid Campaign
-          {subs && (
-            <span style={{ fontSize: 14, color: "var(--muted)", marginLeft: 10 }}>
-              {subs.length} subscribers
-            </span>
-          )}
+          {subs && <span className="text-muted" style={{ fontSize: 14, marginLeft: 10 }}>{subs.length} subscribers</span>}
         </h1>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="page-header-actions">
           {subs && sentCount > 0 && (
-            <span style={{ fontSize: 13, color: "var(--green)" }}>
+            <span className="text-success" style={{ fontSize: 13 }}>
               ✓ {sentCount} sent{failCount > 0 ? `, ${failCount} failed` : ""}
             </span>
           )}
@@ -118,15 +109,9 @@ export default function Campaign() {
         </div>
       </div>
 
-      {/* Test send */}
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
-        <span style={{ fontSize: 13, color: "var(--muted)" }}>Test send to +966503505084:</span>
-        <button
-          className="btn"
-          onClick={sendTest}
-          disabled={testSending}
-          style={{ padding: "4px 14px", fontSize: 13 }}
-        >
+        <span className="text-muted" style={{ fontSize: 13 }}>Test send to +966503505084:</span>
+        <button className="btn" onClick={sendTest} disabled={testSending} style={{ padding: "4px 14px", fontSize: 13 }}>
           {testSending ? "Sending…" : "Send Test"}
         </button>
         {testStatus && (
@@ -136,10 +121,10 @@ export default function Campaign() {
         )}
       </div>
 
-      {error && <div style={{ color: "var(--red)", marginBottom: 16 }}>{error}</div>}
+      {error && <div className="text-error" style={{ marginBottom: 16 }}>{error}</div>}
 
       {!subs && !loading && (
-        <div style={{ color: "var(--muted)", marginTop: 40, textAlign: "center" }}>
+        <div className="text-muted" style={{ marginTop: 40, textAlign: "center" }}>
           Click "Load Subscribers" to fetch the list.
         </div>
       )}
@@ -165,20 +150,20 @@ export default function Campaign() {
                 return (
                   <tr key={key} style={{ opacity: sent === true ? 0.6 : 1 }}>
                     <td style={{ fontWeight: 500 }}>{sub.name || sub.customerName || "—"}</td>
-                    <td style={{ fontSize: 12, color: "var(--muted)", fontFamily: "monospace" }}>{sub.phone}</td>
+                    <td className="text-muted" style={{ fontSize: 12, fontFamily: "monospace" }}>{sub.phone}</td>
                     <td>
                       <span className="badge" style={{ color: STATUS_COLOR[status] || "var(--muted)", background: "transparent" }}>
                         {STATUS_LABEL[status] || status || "—"}
                       </span>
                     </td>
-                    <td style={{ fontSize: 12, color: "var(--muted)" }}>
+                    <td className="text-muted" style={{ fontSize: 12 }}>
                       {formatExpiry(sub.expiryDate || sub.expiry_date || sub.expiry)}
                     </td>
                     <td>
                       {sent === true ? (
-                        <span style={{ color: "var(--green)", fontSize: 13 }}>✓ Sent</span>
+                        <span className="text-success" style={{ fontSize: 13 }}>✓ Sent</span>
                       ) : typeof sent === "string" ? (
-                        <span style={{ color: "var(--red)", fontSize: 11 }} title={sent}>✗ Failed</span>
+                        <span className="text-error" style={{ fontSize: 11 }} title={sent}>✗ Failed</span>
                       ) : (
                         <button
                           onClick={() => sendOne(sub)}

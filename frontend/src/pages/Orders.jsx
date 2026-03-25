@@ -8,7 +8,7 @@ const TABS = [
   { key: "z2u", label: "Z2U" },
 ];
 
-function fmt(val) {
+function fmtCell(val) {
   if (val == null) return "—";
   if (typeof val === "string" && val.includes("T")) {
     const d = new Date(val);
@@ -31,27 +31,30 @@ export default function Orders() {
 
   const handleTab = (key) => { setTab(key); setPage(1); };
 
+  const totalPages = data ? Math.ceil(data.total / data.page_size) : 1;
+
   return (
     <>
       <h1 className="page-title">Orders</h1>
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+      <div className="tab-bar">
         {TABS.map(({ key, label }) => (
-          <button key={key} className="btn"
+          <button
+            key={key}
+            className="btn"
             style={tab === key ? { borderColor: "var(--accent)", color: "var(--accent)" } : {}}
-            onClick={() => handleTab(key)}>
+            onClick={() => handleTab(key)}
+          >
             {label}
           </button>
         ))}
       </div>
 
-      {error && <div style={{ color: "var(--red)", marginBottom: 12 }}>{error}</div>}
-      {!data && !error && <div style={{ color: "var(--muted)" }}>Loading…</div>}
+      {error && <div className="text-error" style={{ marginBottom: 12 }}>{error}</div>}
+      {!data && !error && <div className="state-loading">Loading…</div>}
 
       {data && (
         <>
-          <div style={{ color: "var(--muted)", fontSize: 12, marginBottom: 10 }}>
-            {data.total.toLocaleString()} total records
-          </div>
+          <div className="records-count">{data.total.toLocaleString()} total records</div>
           <div className="table-wrap">
             <table>
               <thead>
@@ -66,7 +69,7 @@ export default function Orders() {
                 {data.items.map((row, i) => (
                   <tr key={i}>
                     {Object.values(row).map((val, j) => (
-                      <td key={j}>{fmt(val)}</td>
+                      <td key={j}>{fmtCell(val)}</td>
                     ))}
                   </tr>
                 ))}
@@ -75,14 +78,8 @@ export default function Orders() {
           </div>
           <div className="pagination">
             <button className="btn" disabled={page === 1} onClick={() => setPage(page - 1)}>← Prev</button>
-            <span style={{ color: "var(--muted)", fontSize: 12 }}>
-              Page {page} of {Math.ceil(data.total / data.page_size)}
-            </span>
-            <button className="btn"
-              disabled={page >= Math.ceil(data.total / data.page_size)}
-              onClick={() => setPage(page + 1)}>
-              Next →
-            </button>
+            <span className="pagination-info">Page {page} of {totalPages}</span>
+            <button className="btn" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Next →</button>
           </div>
         </>
       )}
