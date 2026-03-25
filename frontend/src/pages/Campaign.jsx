@@ -152,7 +152,7 @@ export default function Campaign() {
                     <td style={{ fontWeight: 500 }}>{sub.name || sub.customerName || "—"}</td>
                     <td className="text-muted" style={{ fontSize: 12, fontFamily: "monospace" }}>{sub.phone}</td>
                     <td>
-                      <span className="badge" style={{ color: STATUS_COLOR[status] || "var(--muted)", background: "transparent" }}>
+                      <span className="badge" style={{ color: STATUS_COLOR[status] || "var(--text-muted)", background: "transparent" }}>
                         {STATUS_LABEL[status] || status || "—"}
                       </span>
                     </td>

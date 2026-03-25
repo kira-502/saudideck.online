@@ -15,7 +15,7 @@ import Devices from "./pages/Devices";
 
 function RequireAuth({ children }) {
   const { user } = useAuth();
-  if (user === undefined) return <div style={{ padding: 40, color: "var(--muted)" }}>Loading…</div>;
+  if (user === undefined) return <div style={{ padding: 40, color: "var(--text-muted)" }}>Loading…</div>;
   if (!user) return <Navigate to="/login" replace />;
   return children;
 }

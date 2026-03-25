@@ -58,11 +58,11 @@ export default function Subscriptions() {
             </div>
             <div className="stat-card">
               <div className="stat-label">Expired</div>
-              <div className="stat-value" style={{ color: "var(--muted)" }}>{data.stats.expired}</div>
+              <div className="stat-value" style={{ color: "var(--text-muted)" }}>{data.stats.expired}</div>
             </div>
             <div className="stat-card">
               <div className="stat-label">Cancelled</div>
-              <div className="stat-value" style={{ color: "var(--muted)" }}>{data.stats.cancelled}</div>
+              <div className="stat-value" style={{ color: "var(--text-muted)" }}>{data.stats.cancelled}</div>
             </div>
             <div className="stat-card">
               <div className="stat-label">Active Revenue</div>

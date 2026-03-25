@@ -10,7 +10,7 @@ const STATUS_LABELS = {
 const STATUS_STYLE = {
   pending: { background: "rgba(255,193,7,0.15)", color: "var(--amber)" },
   top: { background: "rgba(78,205,196,0.15)", color: "var(--green)" },
-  done: { background: "rgba(150,150,150,0.15)", color: "var(--muted)" },
+  done: { background: "rgba(150,150,150,0.15)", color: "var(--text-muted)" },
 };
 
 const TABS = [
@@ -53,7 +53,7 @@ function SteamCell({ row, onLinked }) {
   const getSarPrice = (sarVal) => {
     if (sarVal === 0) return { text: "مجاني", color: "var(--green)" };
     if (sarVal != null) return { text: sarVal.toFixed(2) + " ر.س", color: "var(--accent)" };
-    return { text: "غير متاح", color: "var(--muted)" };
+    return { text: "غير متاح", color: "var(--text-muted)" };
   };
 
   if (row.steam_app_id && !editing) {
@@ -73,7 +73,7 @@ function SteamCell({ row, onLinked }) {
             onClick={() => setEditing(true)}
             title="Re-search"
             aria-label="Re-search Steam"
-            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: 11, padding: 0 }}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 11, padding: 0 }}
           >
             ✎
           </button>

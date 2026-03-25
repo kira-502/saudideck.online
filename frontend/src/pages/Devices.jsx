@@ -133,7 +133,7 @@ export default function Devices() {
               <h2 style={{ margin: "0 0 16px", fontSize: 16, color: "var(--accent)" }}>{model}</h2>
 
               <div style={{ display: "grid", gap: 10, marginBottom: 16 }}>
-                <label style={{ fontSize: 12, color: "var(--muted)" }}>
+                <label style={{ fontSize: 12, color: "var(--text-muted)" }}>
                   Cost Price (AED)
                   <input
                     type="number"
@@ -149,7 +149,7 @@ export default function Devices() {
                     {costAed[model] && rate ? `${(parseFloat(costAed[model]) * rate).toFixed(2)} SAR` : "—"}
                   </span>
                 </div>
-                <label style={{ fontSize: 12, color: "var(--muted)" }}>
+                <label style={{ fontSize: 12, color: "var(--text-muted)" }}>
                   Cash Sale Price (SAR)
                   <input
                     type="number"
@@ -158,7 +158,7 @@ export default function Devices() {
                     style={inputStyle}
                   />
                 </label>
-                <label style={{ fontSize: 12, color: "var(--muted)" }}>
+                <label style={{ fontSize: 12, color: "var(--text-muted)" }}>
                   Installment Sale Price (SAR)
                   <input
                     type="number"
@@ -190,7 +190,7 @@ export default function Devices() {
                 </div>
               )}
 
-              <label style={{ fontSize: 12, color: "var(--muted)", display: "block", marginBottom: 8 }}>
+              <label style={{ fontSize: 12, color: "var(--text-muted)", display: "block", marginBottom: 8 }}>
                 Notes (optional)
                 <input
                   type="text"

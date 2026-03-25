@@ -27,8 +27,10 @@ export default function Login() {
   return (
     <div className="login-wrap">
       <div className="login-card">
-        <h1>SaudiDeck</h1>
-        <p>Admin Hub — owner access only</p>
+        <div style={{ textAlign: "center", marginBottom: "var(--space-6)" }}>
+          <h1 style={{ marginBottom: "var(--space-1)" }}>SaudiDeck</h1>
+          <p style={{ margin: 0 }}>Admin Hub — owner access only</p>
+        </div>
         {error && <div className="error-msg">{error}</div>}
         <form onSubmit={handleSubmit}>
           <label>Username</label>
@@ -42,7 +44,7 @@ export default function Login() {
             onChange={(e) => setPassword(e.target.value)} required
           />
           <button className="btn-primary" type="submit" disabled={loading}>
-            {loading ? "Signing in…" : "Sign In"}
+            {loading ? "Signing in\u2026" : "Sign In"}
           </button>
         </form>
       </div>

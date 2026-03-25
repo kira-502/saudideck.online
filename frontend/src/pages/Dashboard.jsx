@@ -8,7 +8,7 @@ const CARDS = [
   { key: "z2u_orders", label: "Z2U Orders", color: "var(--blue)" },
   { key: "matches", label: "Matches", color: "var(--green)" },
   { key: "users", label: "Staff Users", color: "var(--amber)" },
-  { key: "imports_today", label: "Imports Today", color: "var(--muted)" },
+  { key: "imports_today", label: "Imports Today", color: "var(--text-muted)" },
 ];
 
 export default function Dashboard() {
@@ -19,8 +19,8 @@ export default function Dashboard() {
     api.stats().then(setStats).catch((e) => setError(e.message));
   }, []);
 
-  if (error) return <div style={{ color: "var(--red)" }}>{error}</div>;
-  if (!stats) return <div style={{ color: "var(--muted)" }}>Loading…</div>;
+  if (error) return <div className="text-error" style={{ padding: "var(--space-5)" }}>{error}</div>;
+  if (!stats) return <div className="state-loading">Loading\u2026</div>;
 
   return (
     <>
@@ -29,7 +29,7 @@ export default function Dashboard() {
         {CARDS.map(({ key, label, color }) => (
           <div className="stat-card" key={key}>
             <div className="stat-label">{label}</div>
-            <div className="stat-value" style={{ color }}>{stats[key] ?? "—"}</div>
+            <div className="stat-value" style={{ color }}>{stats[key] ?? "\u2014"}</div>
           </div>
         ))}
       </div>
