@@ -142,6 +142,21 @@ class HubAuditLog(Base):
     ip_address = Column(String(45), nullable=True)        # IPv4 or IPv6
 
 
+class GameCode(Base):
+    __tablename__ = "game_codes"
+
+    id = Column(Integer, primary_key=True)
+    added_at = Column(DateTime(timezone=True), default=_now, nullable=False)
+    game_name = Column(String(200), nullable=False)
+    code = Column(String(200), nullable=False)
+    status = Column(String(20), nullable=False, default="available")  # available, sent
+    sent_to_name = Column(String(200), nullable=True)
+    sent_to_phone = Column(String(30), nullable=True)
+    sent_to_order = Column(String(50), nullable=True)
+    sent_at = Column(DateTime(timezone=True), nullable=True)
+    notes = Column(Text, nullable=True)
+
+
 class DevicePriceRecord(Base):
     __tablename__ = "device_price_records"
 

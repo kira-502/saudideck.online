@@ -12,6 +12,7 @@ import GamesLibrary from "./pages/GamesLibrary";
 import GameRequests from "./pages/GameRequests";
 import Campaign from "./pages/Campaign";
 import Devices from "./pages/Devices";
+import GameCodes from "./pages/GameCodes";
 
 function RequireAuth({ children }) {
   const { user } = useAuth();
@@ -50,6 +51,7 @@ export default function App() {
                   <Route path="/game-requests" element={<GameRequests />} />
                   <Route path="/campaign" element={<Campaign />} />
                   <Route path="/devices" element={<Devices />} />
+                  <Route path="/game-codes" element={<GameCodes />} />
                 </Routes>
               </AppLayout>
             </RequireAuth>

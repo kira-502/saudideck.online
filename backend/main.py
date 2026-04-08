@@ -15,6 +15,7 @@ from routers import games_library as games_library_router
 from routers import game_requests as game_requests_router
 from routers import campaign as campaign_router
 from routers import devices as devices_router
+from routers import game_codes as game_codes_router
 
 app = FastAPI(title="SaudiDeck Hub", version="1.0.0")
 
@@ -37,6 +38,7 @@ app.include_router(games_library_router.router, prefix="/api", tags=["games-libr
 app.include_router(game_requests_router.router, prefix="/api", tags=["game-requests"])
 app.include_router(campaign_router.router, prefix="/api")
 app.include_router(devices_router.router, prefix="/api")
+app.include_router(game_codes_router.router, prefix="/api")
 
 
 @app.get("/health")

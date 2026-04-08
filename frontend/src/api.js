@@ -59,4 +59,8 @@ export const api = {
   deviceRecords: (model) => req("GET", `/devices/records${model ? "?model=" + encodeURIComponent(model) : ""}`),
   saveDeviceRecord: (data) => req("POST", "/devices/records", data),
   deleteDeviceRecord: (id) => req("DELETE", `/devices/records/${id}`),
+  gameCodes: (status) => req("GET", `/game-codes${status ? "?status=" + status : ""}`),
+  addGameCode: (data) => req("POST", "/game-codes", data),
+  markCodeSent: (id, data) => req("PATCH", `/game-codes/${id}/send`, data),
+  deleteGameCode: (id) => req("DELETE", `/game-codes/${id}`),
 };
