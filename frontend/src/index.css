@@ -627,14 +627,6 @@ input:focus {
 .btn-perm-delete:hover { background: rgba(239, 68, 68, 0.2); }
 .btn-perm-delete:active { transform: scale(0.98); }
 
-/* ─── Section headers (h2 inside pages) ─── */
-.section-title {
-  font-size: var(--text-lg);
-  font-weight: 600;
-  margin-bottom: var(--space-3);
-  color: var(--text);
-}
-
 /* ─── Mobile Responsive ─── */
 @media (max-width: 768px) {
   .sidebar-toggle {

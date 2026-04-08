@@ -1,4 +1,5 @@
 from typing import Optional
+from datetime import datetime, timezone
 import asyncio
 import io
 import httpx
@@ -11,13 +12,9 @@ from sqlalchemy.orm import Session
 from auth import get_current_user
 from audit import log_action
 from database import get_db
-import os
 import models
 
 router = APIRouter(prefix="/game-requests", tags=["game-requests"])
-
-SUBS_URL = os.environ.get("SUBS_API_URL", "https://subs.saudideck.online/api/subscriptions")
-SUBS_AUTH = (os.environ.get("SUBS_API_USER", "admin"), os.environ.get("SUBS_API_PASS", "SaudiDeck2026"))
 
 VALID_STATUSES = {"pending", "top", "done"}
 PAGE_SIZE = 50
@@ -96,7 +93,7 @@ def _serialize(r: models.GameRequest) -> dict:
 
 # ── Public endpoint (no auth) ─────────────────────────────────────────────────
 
-@router.post("", include_in_schema=True)
+@router.post("")
 def submit_game_request(
     body: GameRequestSubmit,
     request: Request,
@@ -320,7 +317,7 @@ def delete_game_request(
     if not gr:
         raise HTTPException(status_code=404, detail="Game request not found")
 
-    from datetime import datetime, timezone
+
     gr.deleted_at = datetime.now(timezone.utc)
     db.commit()
 
@@ -496,7 +493,7 @@ async def upload_contacts(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse file: {e}")
 
-    from datetime import datetime, timezone
+
     now = datetime.now(timezone.utc)
     upserted = 0
 

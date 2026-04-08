@@ -129,7 +129,7 @@ export default function GameCodes() {
           alignItems: "end",
           marginBottom: 20,
           padding: 16,
-          background: "var(--layout)",
+          background: "var(--surface)",
           borderRadius: 8,
           border: "1px solid var(--border)",
         }}
@@ -319,7 +319,7 @@ export default function GameCodes() {
         >
           <div
             style={{
-              background: "var(--layout)",
+              background: "var(--surface)",
               border: "1px solid var(--border)",
               borderRadius: 10,
               padding: 24,
