@@ -14,6 +14,7 @@ const NAV = [
   { to: "/campaign", label: "Eid Campaign", icon: "\u{1F319}" },
   { to: "/devices", label: "Devices", icon: "\u{1F4BB}" },
   { to: "/game-codes", label: "Game Codes", icon: "\u{1F511}" },
+  { to: "/homepage-dash", label: "Pi Homepage", icon: "\u{1F3E0}" },
 ];
 
 export default function Sidebar() {

@@ -13,6 +13,7 @@ import GameRequests from "./pages/GameRequests";
 import Campaign from "./pages/Campaign";
 import Devices from "./pages/Devices";
 import GameCodes from "./pages/GameCodes";
+import HomepageDash from "./pages/HomepageDash";
 
 function RequireAuth({ children }) {
   const { user } = useAuth();
@@ -52,6 +53,7 @@ export default function App() {
                   <Route path="/campaign" element={<Campaign />} />
                   <Route path="/devices" element={<Devices />} />
                   <Route path="/game-codes" element={<GameCodes />} />
+                  <Route path="/homepage-dash" element={<HomepageDash />} />
                 </Routes>
               </AppLayout>
             </RequireAuth>
