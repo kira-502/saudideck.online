@@ -53,8 +53,11 @@ export default function Sidebar() {
         aria-label="Main navigation"
       >
         <div className="sidebar-brand">
-          <h2>SaudiDeck</h2>
-          <span>Admin Hub</span>
+          <img src="/favicon.png" alt="SaudiDeck" style={{ width: 36, height: 36, borderRadius: 6 }} />
+          <div>
+            <h2>SaudiDeck</h2>
+            <span>Admin Hub</span>
+          </div>
         </div>
         <nav>
           {NAV.map(({ to, label, icon }) => (
