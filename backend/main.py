@@ -137,4 +137,8 @@ if os.path.isdir(STATIC_DIR):
 
     @app.get("/{full_path:path}")
     def spa_fallback(full_path: str):
+        # Serve static files (favicon, images) if they exist
+        static_file = os.path.join(STATIC_DIR, full_path)
+        if full_path and os.path.isfile(static_file):
+            return FileResponse(static_file)
         return FileResponse(f"{STATIC_DIR}/index.html")
