@@ -401,7 +401,7 @@ export default function GameRequests() {
     api.notifyInfo(id)
       .then(({ name, phone, game_name }) => {
         if (!phone) throw new Error("No phone number found");
-        const msg = `أهلا ${name} 👋\nوفّرنا لك ${game_name} 🎮\nللمزيد من الألعاب زور متجرنا\nsaudideck.games`;
+        const msg = `أهلا ${name}\nوفّرنا لك ${game_name}\nللمزيد من الألعاب زور متجرنا\nsaudideck.games`;
         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
       })
       .catch((e) => setNotifyError(e.message))
