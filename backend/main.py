@@ -1,8 +1,11 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 from config import ALLOWED_ORIGINS
 from routers import auth as auth_router
 from routers import dashboard as dashboard_router
@@ -17,7 +20,21 @@ from routers import campaign as campaign_router
 from routers import devices as devices_router
 from routers import game_codes as game_codes_router
 
+# Security: never allow wildcard origin with credentials.
+if "*" in ALLOWED_ORIGINS:
+    raise RuntimeError("ALLOWED_ORIGINS must not contain '*' when allow_credentials=True")
+
 app = FastAPI(title="SaudiDeck Hub", version="1.0.0")
+
+# Rate limiter — attach to app state so per-router @limiter.limit decorators work.
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+
+
+@app.exception_handler(RateLimitExceeded)
+def _rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return JSONResponse(status_code=429, content={"detail": "Too many requests — slow down"})
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -131,14 +148,19 @@ def terms_of_service():
 
 
 # Serve built React frontend (production)
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+STATIC_DIR = os.path.realpath(os.path.join(os.path.dirname(__file__), "static"))
+INDEX_HTML = os.path.join(STATIC_DIR, "index.html")
 if os.path.isdir(STATIC_DIR):
     app.mount("/assets", StaticFiles(directory=f"{STATIC_DIR}/assets"), name="assets")
 
     @app.get("/{full_path:path}")
     def spa_fallback(full_path: str):
-        # Serve static files (favicon, images) if they exist
-        static_file = os.path.join(STATIC_DIR, full_path)
-        if full_path and os.path.isfile(static_file):
-            return FileResponse(static_file)
-        return FileResponse(f"{STATIC_DIR}/index.html")
+        # Never shadow /api/* — wrong URLs should 404, not serve the SPA.
+        if full_path.startswith("api/") or full_path.startswith("api"):
+            return JSONResponse(status_code=404, content={"detail": "Not Found"})
+        # Prevent path traversal: resolve and verify the result stays inside STATIC_DIR.
+        if full_path and ".." not in full_path.split("/"):
+            requested = os.path.realpath(os.path.join(STATIC_DIR, full_path))
+            if requested.startswith(STATIC_DIR + os.sep) and os.path.isfile(requested):
+                return FileResponse(requested)
+        return FileResponse(INDEX_HTML)

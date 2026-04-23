@@ -9,15 +9,19 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, field_validator
 from sqlalchemy import case
 from sqlalchemy.orm import Session
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from auth import get_current_user
 from audit import log_action
 from database import get_db
 import models
 
 router = APIRouter(prefix="/game-requests", tags=["game-requests"])
+limiter = Limiter(key_func=get_remote_address)
 
 VALID_STATUSES = {"pending", "top", "done"}
 PAGE_SIZE = 50
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB cap on Salla contact uploads
 
 
 def _get_db():
@@ -94,6 +98,7 @@ def _serialize(r: models.GameRequest) -> dict:
 # ── Public endpoint (no auth) ─────────────────────────────────────────────────
 
 @router.post("")
+@limiter.limit("5/minute")
 def submit_game_request(
     body: GameRequestSubmit,
     request: Request,
@@ -258,7 +263,10 @@ def link_steam(
     db: Session = Depends(_get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    gr = db.query(models.GameRequest).filter(models.GameRequest.id == request_id).first()
+    gr = db.query(models.GameRequest).filter(
+        models.GameRequest.id == request_id,
+        models.GameRequest.deleted_at.is_(None),
+    ).first()
     if not gr:
         raise HTTPException(status_code=404, detail="Game request not found")
 
@@ -292,10 +300,12 @@ def delete_game_request(
     db: Session = Depends(_get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    gr = db.query(models.GameRequest).filter(models.GameRequest.id == request_id).first()
+    gr = db.query(models.GameRequest).filter(
+        models.GameRequest.id == request_id,
+        models.GameRequest.deleted_at.is_(None),
+    ).first()
     if not gr:
         raise HTTPException(status_code=404, detail="Game request not found")
-
 
     gr.deleted_at = datetime.now(timezone.utc)
     db.commit()
@@ -320,7 +330,10 @@ def restore_game_request(
     db: Session = Depends(_get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    gr = db.query(models.GameRequest).filter(models.GameRequest.id == request_id).first()
+    gr = db.query(models.GameRequest).filter(
+        models.GameRequest.id == request_id,
+        models.GameRequest.deleted_at.isnot(None),
+    ).first()
     if not gr:
         raise HTTPException(status_code=404, detail="Game request not found")
 
@@ -347,7 +360,10 @@ def permanent_delete_game_request(
     db: Session = Depends(_get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    gr = db.query(models.GameRequest).filter(models.GameRequest.id == request_id).first()
+    gr = db.query(models.GameRequest).filter(
+        models.GameRequest.id == request_id,
+        models.GameRequest.deleted_at.isnot(None),
+    ).first()
     if not gr:
         raise HTTPException(status_code=404, detail="Game request not found")
 
@@ -450,7 +466,12 @@ async def upload_contacts(
     current_user: models.User = Depends(get_current_user),
 ):
     """Upload a Salla orders XLS/XLSX to populate order → name + phone lookup."""
+    # Enforce size cap before loading into memory.
+    if file.size is not None and file.size > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail=f"File too large (max {MAX_UPLOAD_BYTES // (1024*1024)} MB)")
     content = await file.read()
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail=f"File too large (max {MAX_UPLOAD_BYTES // (1024*1024)} MB)")
     rows = []
 
     try:
@@ -529,7 +550,10 @@ def notify_info(
     current_user: models.User = Depends(get_current_user),
 ):
     """Look up customer name and phone from uploaded Salla contacts by order number."""
-    gr = db.query(models.GameRequest).filter(models.GameRequest.id == request_id).first()
+    gr = db.query(models.GameRequest).filter(
+        models.GameRequest.id == request_id,
+        models.GameRequest.deleted_at.is_(None),
+    ).first()
     if not gr:
         raise HTTPException(status_code=404, detail="Game request not found")
     if not gr.order_number:
@@ -557,7 +581,10 @@ def update_game_request(
     db: Session = Depends(_get_db),
     current_user: models.User = Depends(get_current_user),
 ):
-    gr = db.query(models.GameRequest).filter(models.GameRequest.id == request_id).first()
+    gr = db.query(models.GameRequest).filter(
+        models.GameRequest.id == request_id,
+        models.GameRequest.deleted_at.is_(None),
+    ).first()
     if not gr:
         raise HTTPException(status_code=404, detail="Game request not found")
 

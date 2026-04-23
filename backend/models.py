@@ -20,6 +20,7 @@ class User(Base):
     role = Column(String(20), nullable=False, default="employee")
     created_at = Column(DateTime(timezone=True), default=_now)
     last_login = Column(DateTime(timezone=True), nullable=True)
+    session_version = Column(Integer, nullable=False, default=0)
 
 
 class SallaOrder(Base):
@@ -71,7 +72,7 @@ class Z2UOrder(Base):
 class Match(Base):
     __tablename__ = "matches"
     id = Column(Integer, primary_key=True)
-    salla_order_id = Column(Integer, ForeignKey("salla_orders.id"), nullable=False)
+    salla_order_id = Column(Integer, ForeignKey("salla_orders.id", ondelete="CASCADE"), nullable=False)
     supplier = Column(String(20), nullable=False)
     cost_sar = Column(Numeric(10, 2), nullable=False)
     profit_sar = Column(Numeric(10, 2), nullable=False)
@@ -134,7 +135,7 @@ class HubAuditLog(Base):
 
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime(timezone=True), default=_now, nullable=False, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     username = Column(String(50), nullable=True)          # denormalized for easy display
     action = Column(String(100), nullable=False)          # e.g. "login", "view_orders", "export"
     resource = Column(String(100), nullable=True)         # e.g. "salla_orders", "users"
@@ -144,6 +145,7 @@ class HubAuditLog(Base):
 
 class GameCode(Base):
     __tablename__ = "game_codes"
+    __table_args__ = (UniqueConstraint("game_name", "code", name="uq_game_codes_game_code"),)
 
     id = Column(Integer, primary_key=True)
     added_at = Column(DateTime(timezone=True), default=_now, nullable=False)

@@ -16,10 +16,10 @@ def test_password_hash_and_verify():
 
 
 def test_session_token_round_trip():
-    token = create_session_token(42)
-    assert decode_session_token(token) == 42
+    token = create_session_token(42, 3)
+    assert decode_session_token(token) == {"uid": 42, "ver": 3}
 
 
 def test_session_token_tampered_returns_none():
-    token = create_session_token(1) + "tampered"
+    token = create_session_token(1, 0) + "tampered"
     assert decode_session_token(token) is None

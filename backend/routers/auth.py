@@ -1,7 +1,10 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.orm import Session
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from auth import (
     verify_password, create_session_token, get_current_user, COOKIE_NAME,
 )
@@ -11,6 +14,7 @@ from database import get_db
 import models
 
 router = APIRouter(tags=["auth"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 def _get_db():
@@ -24,8 +28,10 @@ class LoginRequest(BaseModel):
 
 
 @router.post("/login")
+@limiter.limit("10/minute")
 def login(body: LoginRequest, request: Request, response: Response, db: Session = Depends(_get_db)):
-    user = db.query(models.User).filter(models.User.username == body.username).first()
+    uname = (body.username or "").strip().lower()
+    user = db.query(models.User).filter(func.lower(models.User.username) == uname).first()
     try:
         password_ok = user is not None and verify_password(body.password, user.password_hash)
     except Exception:
@@ -35,11 +41,10 @@ def login(body: LoginRequest, request: Request, response: Response, db: Session 
     if user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
 
-    # Update last_login
     user.last_login = datetime.now(timezone.utc)
     db.commit()
 
-    token = create_session_token(user.id)
+    token = create_session_token(user.id, user.session_version)
     response.set_cookie(
         key=COOKIE_NAME,
         value=token,
@@ -60,6 +65,9 @@ def logout(
     db: Session = Depends(_get_db),
     current_user: models.User = Depends(get_current_user),
 ):
+    # Bump session_version so the current token (and any copies) is rejected.
+    current_user.session_version = (current_user.session_version or 0) + 1
+    db.commit()
     response.delete_cookie(key=COOKIE_NAME, httponly=True, samesite="lax", secure=True, path="/")
     log_action(db, user_id=current_user.id, username=current_user.username,
                action="logout", ip=request.client.host if request.client else None)

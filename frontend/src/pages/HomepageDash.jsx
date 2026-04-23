@@ -10,6 +10,8 @@ export default function HomepageDash() {
           display: "block",
         }}
         title="Homepage Dashboard"
+        sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+        referrerPolicy="no-referrer"
       />
     </div>
   );
