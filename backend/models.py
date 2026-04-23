@@ -26,7 +26,7 @@ class SallaOrder(Base):
     __tablename__ = "salla_orders"
     id = Column(Integer, primary_key=True)
     order_num = Column(BigInteger, unique=True, nullable=False)
-    date = Column(DateTime(timezone=True), nullable=False)
+    date = Column(DateTime(timezone=True), nullable=False, index=True)
     product = Column(String(300), nullable=False)
     price_sar = Column(Numeric(10, 2), nullable=False)
     payment_method = Column(String(100), nullable=True)
@@ -39,7 +39,7 @@ class G2GOrder(Base):
     id = Column(Integer, primary_key=True)
     order_id = Column(String(50), nullable=False)
     split_index = Column(Integer, nullable=False, default=0)
-    date = Column(DateTime(timezone=True), nullable=False)
+    date = Column(DateTime(timezone=True), nullable=False, index=True)
     product = Column(String(500), nullable=False)
     game_name = Column(String(300), nullable=True)
     total_paid_usd = Column(Numeric(10, 4), nullable=True)
@@ -51,7 +51,7 @@ class PlatiOrder(Base):
     __tablename__ = "plati_orders"
     id = Column(Integer, primary_key=True)
     plati_num = Column(String(50), unique=True, nullable=False)
-    date = Column(DateTime(timezone=True), nullable=False)
+    date = Column(DateTime(timezone=True), nullable=False, index=True)
     product = Column(String(300), nullable=False)
     cost_usdt = Column(Numeric(10, 4), nullable=False)
     imported_at = Column(DateTime(timezone=True), default=_now)
@@ -61,7 +61,7 @@ class Z2UOrder(Base):
     __tablename__ = "z2u_orders"
     id = Column(Integer, primary_key=True)
     order_id = Column(String(50), unique=True, nullable=False)
-    date = Column(DateTime(timezone=True), nullable=False)
+    date = Column(DateTime(timezone=True), nullable=False, index=True)
     product = Column(String(500), nullable=False)
     cost_usdt = Column(Numeric(10, 4), nullable=False)
     status = Column(String(20), nullable=True)
@@ -107,7 +107,7 @@ class GameRequest(Base):
     created_at = Column(DateTime(timezone=True), default=_now, nullable=False, index=True)
     game_name = Column(String(200), nullable=False)
     order_number = Column(String(50), nullable=True)
-    status = Column(String(20), nullable=False, default="pending")  # pending, has_deal, added, no_deal
+    status = Column(String(20), nullable=False, default="pending", index=True)  # pending, top, done
     notes = Column(Text, nullable=True)
     steam_app_id = Column(String(20), nullable=True)
     steam_name = Column(String(200), nullable=True)
@@ -115,7 +115,7 @@ class GameRequest(Base):
     steam_price_uah = Column(Float, nullable=True)
     steam_price_sar = Column(Float, nullable=True)
     steam_discount = Column(Integer, nullable=True)
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
 
 
 class SallaOrderContact(Base):
@@ -149,7 +149,7 @@ class GameCode(Base):
     added_at = Column(DateTime(timezone=True), default=_now, nullable=False)
     game_name = Column(String(200), nullable=False)
     code = Column(String(200), nullable=False)
-    status = Column(String(20), nullable=False, default="available")  # available, sent
+    status = Column(String(20), nullable=False, default="available", index=True)  # available, sent
     sent_to_name = Column(String(200), nullable=True)
     sent_to_phone = Column(String(30), nullable=True)
     sent_to_order = Column(String(50), nullable=True)

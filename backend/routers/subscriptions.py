@@ -10,22 +10,20 @@ import os
 router = APIRouter(prefix="/subscriptions", tags=["subscriptions"])
 
 SUBS_URL = os.environ.get("SUBS_API_URL", "https://subs.saudideck.online/api/subscriptions")
-SUBS_AUTH = (
-    os.environ.get("SUBS_API_USER", "admin"),
-    os.environ.get("SUBS_API_PASS", "SaudiDeck2026"),
-)
+SUBS_AUTH = (os.environ.get("SUBS_API_USER", ""), os.environ.get("SUBS_API_PASS", ""))
 
 
 @router.get("")
-def get_subscriptions(
+async def get_subscriptions(
     request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
     try:
-        resp = httpx.get(SUBS_URL, auth=SUBS_AUTH, timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(SUBS_URL, auth=SUBS_AUTH)
+            resp.raise_for_status()
+            data = resp.json()
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Subscriptions service error: {e}")
 

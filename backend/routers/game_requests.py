@@ -157,29 +157,14 @@ def list_game_requests(
     }
 
 
-@router.get("/debug-contacts")
-def debug_contacts(
-    db: Session = Depends(_get_db),
-    current_user: models.User = Depends(get_current_user),
-):
-    contacts = db.query(models.SallaOrderContact).limit(20).all()
-    requests_with_orders = db.query(models.GameRequest).filter(
-        models.GameRequest.order_number.isnot(None),
-        models.GameRequest.deleted_at.is_(None),
-    ).all()
-    return {
-        "imported_contacts": [{"order": c.order_number, "name": c.customer_name, "phone": c.phone} for c in contacts],
-        "game_request_orders": [{"id": r.id, "game": r.game_name, "order": r.order_number} for r in requests_with_orders],
-    }
-
-
 @router.get("/steam-search")
 async def steam_search(
     q: str,
     current_user: models.User = Depends(get_current_user),
 ):
     """Search Steam Ukraine store and return up to 5 results with UAH + SAR prices."""
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    # Single HTTP/2 client reused across all calls → one connection pool, no repeated TLS.
+    async with httpx.AsyncClient(timeout=15.0, http2=True) as client:
         # 1. Search Steam store
         search_resp = await client.get(
             "https://store.steampowered.com/api/storesearch/",
@@ -188,40 +173,34 @@ async def steam_search(
         search_resp.raise_for_status()
         search_data = search_resp.json()
 
-    items = (search_data.get("items") or [])[:5]
-    if not items:
-        return []
+        items = (search_data.get("items") or [])[:5]
+        if not items:
+            return []
 
-    # 2. Fetch exchange rate UAH → SAR (open.er-api.com supports UAH)
-    sar_rate: Optional[float] = None
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            fx_resp = await client.get(
-                "https://open.er-api.com/v6/latest/UAH",
-            )
-            fx_resp.raise_for_status()
-            fx_data = fx_resp.json()
-            sar_rate = fx_data.get("rates", {}).get("SAR")
-    except Exception:
-        sar_rate = None
-
-    # 3. Fetch app details concurrently
-    app_ids = [str(item["id"]) for item in items]
-
-    async def fetch_details(app_id: str):
+        # 2. Fetch exchange rate UAH → SAR (open.er-api.com supports UAH)
+        sar_rate: Optional[float] = None
         try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
+            fx_resp = await client.get("https://open.er-api.com/v6/latest/UAH")
+            fx_resp.raise_for_status()
+            sar_rate = fx_resp.json().get("rates", {}).get("SAR")
+        except Exception:
+            sar_rate = None
+
+        # 3. Fetch app details concurrently (reuses same client + connection pool)
+        async def fetch_details(app_id: str):
+            try:
                 resp = await client.get(
                     "https://store.steampowered.com/api/appdetails",
                     params={"appids": app_id, "cc": "UA", "l": "english"},
                 )
                 resp.raise_for_status()
                 return app_id, resp.json()
-        except Exception:
-            return app_id, None
+            except Exception:
+                return app_id, None
 
-    detail_results = await asyncio.gather(*[fetch_details(aid) for aid in app_ids])
-    details_map = {aid: data for aid, data in detail_results}
+        app_ids = [str(item["id"]) for item in items]
+        detail_results = await asyncio.gather(*[fetch_details(aid) for aid in app_ids])
+        details_map = {aid: data for aid, data in detail_results}
 
     # 4. Build response
     results = []
@@ -404,31 +383,30 @@ async def refresh_all_prices(
     if not linked:
         return {"updated": 0}
 
-    # Fetch exchange rate once
-    sar_rate: Optional[float] = None
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        # Fetch exchange rate once
+        sar_rate: Optional[float] = None
+        try:
             fx_resp = await client.get("https://open.er-api.com/v6/latest/UAH")
             fx_resp.raise_for_status()
             sar_rate = fx_resp.json().get("rates", {}).get("SAR")
-    except Exception:
-        sar_rate = None
+        except Exception:
+            sar_rate = None
 
-    async def fetch_price(app_id: str):
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
+        async def fetch_price(app_id: str):
+            try:
                 resp = await client.get(
                     "https://store.steampowered.com/api/appdetails",
                     params={"appids": app_id, "cc": "UA", "l": "english"},
                 )
                 resp.raise_for_status()
                 return app_id, resp.json()
-        except Exception:
-            return app_id, None
+            except Exception:
+                return app_id, None
 
-    app_ids = [gr.steam_app_id for gr in linked]
-    results = await asyncio.gather(*[fetch_price(aid) for aid in app_ids])
-    details_map = {aid: data for aid, data in results}
+        app_ids = [gr.steam_app_id for gr in linked]
+        results = await asyncio.gather(*[fetch_price(aid) for aid in app_ids])
+        details_map = {aid: data for aid, data in results}
 
     updated = 0
     for gr in linked:
@@ -497,16 +475,27 @@ async def upload_contacts(
     now = datetime.now(timezone.utc)
     upserted = 0
 
+    # Parse all rows first to build the set of order numbers
+    parsed = []
     for row in rows:
         order_no = str(row.get("رقم الطلب") or "").strip().split(".")[0]
         name = str(row.get("اسم العميل") or "").strip()
         phone = str(row.get("رقم الجوال") or "").strip().lstrip("+")
         if not order_no or order_no in ("", "nan", "None"):
             continue
+        parsed.append((order_no, name, phone))
 
-        existing = db.query(models.SallaOrderContact).filter(
-            models.SallaOrderContact.order_number == order_no
-        ).first()
+    # Bulk-load all existing contacts in one query
+    order_nos = {p[0] for p in parsed}
+    existing_map = {
+        c.order_number: c
+        for c in db.query(models.SallaOrderContact)
+        .filter(models.SallaOrderContact.order_number.in_(order_nos))
+        .all()
+    }
+
+    for order_no, name, phone in parsed:
+        existing = existing_map.get(order_no)
         if existing:
             existing.customer_name = name or existing.customer_name
             existing.phone = phone or existing.phone
