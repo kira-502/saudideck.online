@@ -20,6 +20,8 @@ export const api = {
   login: (username, password) => req("POST", "/login", { username, password }),
   logout: () => req("POST", "/logout"),
   me: () => req("GET", "/me"),
+  changePassword: (current_password, new_password) =>
+    req("POST", "/change-password", { current_password, new_password }),
   stats: () => req("GET", "/dashboard/stats"),
   orders: (type, page = 1) => req("GET", `/orders/${type}?page=${page}`),
   users: () => req("GET", "/users"),
