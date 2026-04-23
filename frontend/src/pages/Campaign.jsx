@@ -28,10 +28,15 @@ export default function Campaign() {
   const [testSending, setTestSending] = useState(false);
 
   const sendTest = async () => {
+    const phone = window.prompt("Send test to which phone number? (include country code, no +)");
+    if (!phone || !/^\d{8,15}$/.test(phone.trim())) {
+      if (phone) setTestStatus("✗ Invalid phone");
+      return;
+    }
     setTestSending(true);
     setTestStatus("");
     try {
-      await api.campaignSend({ phone: "966503505084", name: "Mohammed", expiry_date: "01/05/2026" });
+      await api.campaignSend({ phone: phone.trim(), name: "Test", expiry_date: "01/05/2026" });
       setTestStatus("✓ Sent successfully");
     } catch (e) {
       setTestStatus("✗ " + e.message);

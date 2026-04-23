@@ -66,10 +66,10 @@ export default function Orders() {
                 </tr>
               </thead>
               <tbody>
-                {data.items.map((row, i) => (
-                  <tr key={i}>
-                    {Object.values(row).map((val, j) => (
-                      <td key={j}>{fmtCell(val)}</td>
+                {data.items.map((row) => (
+                  <tr key={`${tab}-${page}-${row.id ?? row.order_num ?? row.order_id ?? row.plati_num}`}>
+                    {Object.entries(row).map(([col, val]) => (
+                      <td key={col}>{fmtCell(val)}</td>
                     ))}
                   </tr>
                 ))}

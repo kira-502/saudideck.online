@@ -426,24 +426,28 @@ async def refresh_all_prices(
 
     updated = 0
     for gr in linked:
-        detail_data = details_map.get(gr.steam_app_id)
-        if not detail_data or not detail_data.get(gr.steam_app_id, {}).get("success"):
-            continue
-        app_info = detail_data[gr.steam_app_id]["data"]
-        if app_info.get("is_free"):
-            gr.steam_price_uah = 0.0
-            gr.steam_price_sar = 0.0
-            gr.steam_discount = 0
-            updated += 1
-        else:
-            price_overview = app_info.get("price_overview")
-            if price_overview:
-                raw = price_overview.get("final", 0)
-                gr.steam_price_uah = round(raw / 100, 2)
-                if sar_rate is not None:
-                    gr.steam_price_sar = round(gr.steam_price_uah * sar_rate, 2)
-                gr.steam_discount = price_overview.get("discount_percent", 0)
+        # Per-row try/except so one malformed Steam payload doesn't wipe every other update.
+        try:
+            detail_data = details_map.get(gr.steam_app_id)
+            if not detail_data or not detail_data.get(gr.steam_app_id, {}).get("success"):
+                continue
+            app_info = detail_data[gr.steam_app_id]["data"]
+            if app_info.get("is_free"):
+                gr.steam_price_uah = 0.0
+                gr.steam_price_sar = 0.0
+                gr.steam_discount = 0
                 updated += 1
+            else:
+                price_overview = app_info.get("price_overview")
+                if price_overview:
+                    raw = price_overview.get("final", 0)
+                    gr.steam_price_uah = round(raw / 100, 2)
+                    if sar_rate is not None:
+                        gr.steam_price_sar = round(gr.steam_price_uah * sar_rate, 2)
+                    gr.steam_discount = price_overview.get("discount_percent", 0)
+                    updated += 1
+        except Exception:
+            continue
 
     db.commit()
     log_action(

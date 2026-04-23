@@ -298,7 +298,7 @@ export default function GameRequests() {
   const [refreshingPrices, setRefreshingPrices] = useState(false);
   const [priceMsg, setPriceMsg] = useState("");
   const [notifyingId, setNotifyingId] = useState(null);
-  const [notifyError, setNotifyError] = useState("");
+  const [notifyErrors, setNotifyErrors] = useState({});
   const [uploadMsg, setUploadMsg] = useState("");
   const uploadRef = useRef(null);
 
@@ -397,14 +397,17 @@ export default function GameRequests() {
 
   const handleNotify = (id) => {
     setNotifyingId(id);
-    setNotifyError("");
+    setNotifyErrors((prev) => {
+      const { [id]: _, ...rest } = prev;
+      return rest;
+    });
     api.notifyInfo(id)
       .then(({ name, phone, game_name }) => {
         if (!phone) throw new Error("No phone number found");
         const msg = `أهلا ${name}\nوفّرنا لك ${game_name}\nللمزيد من الألعاب زور متجرنا\nsaudideck.games`;
         window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
       })
-      .catch((e) => setNotifyError(e.message))
+      .catch((e) => setNotifyErrors((prev) => ({ ...prev, [id]: e.message })))
       .finally(() => setNotifyingId(null));
   };
 
@@ -628,8 +631,8 @@ export default function GameRequests() {
                               </button>
                             )}
                           </div>
-                          {notifyError && notifyingId === null && (
-                            <div className="text-error" style={{ fontSize: 11, marginTop: 3 }}>{notifyError}</div>
+                          {notifyErrors[r.id] && (
+                            <div className="text-error" style={{ fontSize: 11, marginTop: 3 }}>{notifyErrors[r.id]}</div>
                           )}
                         </td>
                       </tr>
